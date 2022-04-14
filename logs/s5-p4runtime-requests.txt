@@ -1,11 +1,12 @@
 
-[2022-04-14 15:16:07.376] /p4.v1.P4Runtime/SetForwardingPipelineConfig
+[2022-04-14 15:16:07.392] /p4.v1.P4Runtime/SetForwardingPipelineConfig
 ---
-Message too long (16394 bytes)! Skipping log...
+Message too long (16407 bytes)! Skipping log...
 ---
 
-[2022-04-14 15:16:07.404] /p4.v1.P4Runtime/Write
+[2022-04-14 15:16:07.410] /p4.v1.P4Runtime/Write
 ---
+device_id: 4
 election_id {
   low: 1
 }
@@ -17,8 +18,44 @@ updates {
       match {
         field_id: 1
         lpm {
-          value: "\n\000\001\002"
-          prefix_len: 32
+          value: "\n\000\001\000"
+          prefix_len: 24
+        }
+      }
+      action {
+        action {
+          action_id: 28792405
+          params {
+            param_id: 1
+            value: "\010\000\000\000\002\""
+          }
+          params {
+            param_id: 2
+            value: "\000\001"
+          }
+        }
+      }
+    }
+  }
+}
+---
+
+[2022-04-14 15:16:07.412] /p4.v1.P4Runtime/Write
+---
+device_id: 4
+election_id {
+  low: 1
+}
+updates {
+  type: INSERT
+  entity {
+    table_entry {
+      table_id: 37375156
+      match {
+        field_id: 1
+        lpm {
+          value: "\n\000\002\000"
+          prefix_len: 24
         }
       }
       action {
@@ -39,43 +76,9 @@ updates {
 }
 ---
 
-[2022-04-14 15:16:07.406] /p4.v1.P4Runtime/Write
+[2022-04-14 15:16:07.413] /p4.v1.P4Runtime/Write
 ---
-election_id {
-  low: 1
-}
-updates {
-  type: INSERT
-  entity {
-    table_entry {
-      table_id: 37375156
-      match {
-        field_id: 1
-        lpm {
-          value: "\n\000\001\001"
-          prefix_len: 32
-        }
-      }
-      action {
-        action {
-          action_id: 28792405
-          params {
-            param_id: 1
-            value: "\010\000\000\000\001\021"
-          }
-          params {
-            param_id: 2
-            value: "\000\001"
-          }
-        }
-      }
-    }
-  }
-}
----
-
-[2022-04-14 15:16:07.408] /p4.v1.P4Runtime/Write
----
+device_id: 4
 election_id {
   low: 1
 }

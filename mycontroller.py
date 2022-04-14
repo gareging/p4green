@@ -19,7 +19,7 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 SWITCH_TO_HOST_PORT = 1
 SWITCH_TO_SWITCH_PORT = 2
 
-def writeForwardingRule(p4info_helper, sw, ip_address, mac_address, port):
+def writeForwardingRule(p4info_helper, sw, ip_address, mask, mac_address, port):
     """
     Installs three rules:
     1) An tunnel ingress rule on the ingress switch in the ipv4_lpm table that
@@ -41,7 +41,7 @@ def writeForwardingRule(p4info_helper, sw, ip_address, mac_address, port):
     table_entry = p4info_helper.buildTableEntry(
         table_name="MyIngress.ipv4_lpm",
         match_fields={
-            "hdr.ipv4.dstAddr": (ip_address, 32)
+            "hdr.ipv4.dstAddr": (ip_address, mask)
         },
         action_name="MyIngress.ipv4_forward",
         action_params={
@@ -91,46 +91,54 @@ def printCounter(p4info_helper, sw, counter_name, index):
 def main(p4info_file_path, bmv2_file_path):
     # Instantiate a P4Runtime helper from the p4info file
     p4info_helper = p4runtime_lib.helper.P4InfoHelper(p4info_file_path)
-
+    switch_list = []
     try:
         # Create a switch connection object for s1 and s2;
         # this is backed by a P4Runtime gRPC connection.
         # Also, dump all P4Runtime messages sent to switch to given txt files.
-        s1 = p4runtime_lib.bmv2.Bmv2SwitchConnection(
-            name='s1',
-            address='127.0.0.1:50051',
-            device_id=0,
-            proto_dump_file='logs/s1-p4runtime-requests.txt')
-        s2 = p4runtime_lib.bmv2.Bmv2SwitchConnection(
-            name='s2',
-            address='127.0.0.1:50052',
-            device_id=1,
-            proto_dump_file='logs/s2-p4runtime-requests.txt')
+        for i in range(1, 8):
+            s = p4runtime_lib.bmv2.Bmv2SwitchConnection(name=f's{i}',address=f'127.0.0.1:5005{i}',device_id=i-1,proto_dump_file=f'logs/s{i}-p4runtime-requests.txt')
+            switch_list.append(s)
 
         # Send master arbitration update message to establish this controller as
         # master (required by P4Runtime before performing any other write operation)
-        s1.MasterArbitrationUpdate()
-#        s2.MasterArbitrationUpdate()
-
-        # Install the P4 program on the switches
-        s1.SetForwardingPipelineConfig(p4info=p4info_helper.p4info,
+        i = 1
+        for s in switch_list:
+            s.MasterArbitrationUpdate()
+            s.SetForwardingPipelineConfig(p4info=p4info_helper.p4info,
                                        bmv2_json_file_path=bmv2_file_path)
-        print("Installed P4 Program using SetForwardingPipelineConfig on s1")
-#        s2.SetForwardingPipelineConfig(p4info=p4info_helper.p4info,
-#                                       bmv2_json_file_path=bmv2_file_path)
-        print("Installed P4 Program using SetForwardingPipelineConfig on s2")
-
-
+            print(f'Installed P4 Program using SetForwardingPipelineConfig on s{i}')
+            i += 1
         # Write the rules that tunnel traffic from h1 to h2
 #        writeTunnelRules(p4info_helper, ingress_sw=s1, egress_sw=s2, tunnel_id=100,
 #                         dst_eth_addr="08:00:00:00:02:22", dst_ip_addr="10.0.2.2")
 
         # Write the rules that tunnel traffic from h2 to h1
-        writeForwardingRule(p4info_helper, sw=s1, ip_address="10.0.1.2",
+        writeForwardingRule(p4info_helper, sw=switch_list[0], ip_address="10.0.1.2", mask=32,
                             mac_address="08:00:00:00:02:22", port=2)
+        writeForwardingRule(p4info_helper, sw=switch_list[0], ip_address="10.0.1.1", mask = 32,
+                            mac_address="08:00:00:00:01:11", port=1)
+        writeForwardingRule(p4info_helper, sw=switch_list[0], ip_address="10.0.0.0", mask=8,
+                            mac_address="08:00:00:00:02:22", port=3)
+
+        writeForwardingRule(p4info_helper, sw=switch_list[4], ip_address="10.0.1.0", mask=24,
+                            mac_address="08:00:00:00:02:22", port=1)
+        writeForwardingRule(p4info_helper, sw=switch_list[4], ip_address="10.0.2.0", mask=24,
+                            mac_address="08:00:00:00:02:22", port=2)
+        writeForwardingRule(p4info_helper, sw=switch_list[4], ip_address="10.0.0.0", mask=8,
+                            mac_address="08:00:00:00:02:22", port=3)
+
+
+        writeForwardingRule(p4info_helper, sw=switch_list[1], ip_address="10.0.2.1", mask=32,
+                            mac_address="08:00:00:00:03:33", port=1)
+        writeForwardingRule(p4info_helper, sw=switch_list[1], ip_address="10.0.2.2", mask=32,
+                            mac_address="08:00:00:00:04:44", port=2)
+        writeForwardingRule(p4info_helper, sw=switch_list[1], ip_address="10.0.0.0", mask=8,
+                            mac_address="08:00:00:00:04:44", port=3)
+
 
         # TODO Uncomment the following two lines to read table entries from s1 and s2
-        readTableRules(p4info_helper, s1)
+        #readTableRules(p4info_helper, switch_list[0])
         # readTableRules(p4info_helper, s2)
 
         # Print the tunnel counters every 2 seconds
