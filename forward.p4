@@ -7,6 +7,7 @@ const bit<16> TYPE_IPV4 = 0x800;
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
 *************************************************************************/
+#define CPU_PORT 254
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
@@ -97,17 +98,21 @@ control MyIngress(inout headers hdr,
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
+    action send_to_cpu() {
+        standard_metadata.egress_spec = CPU_PORT;
+    }
+
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: lpm;
         }
         actions = {
             ipv4_forward;
-            drop;
+	    send_to_cpu;
             NoAction;
         }
         size = 1024;
-        default_action = drop();
+        default_action = send_to_cpu();
     }
 
     apply {

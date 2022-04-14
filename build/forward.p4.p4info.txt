@@ -17,7 +17,7 @@ tables {
     id: 28792405
   }
   action_refs {
-    id: 25652968
+    id: 22952082
   }
   action_refs {
     id: 21257015
@@ -30,13 +30,6 @@ actions {
     name: "NoAction"
     alias: "NoAction"
     annotations: "@noWarn(\"unused\")"
-  }
-}
-actions {
-  preamble {
-    id: 25652968
-    name: "MyIngress.drop"
-    alias: "drop"
   }
 }
 actions {
@@ -54,6 +47,13 @@ actions {
     id: 2
     name: "port"
     bitwidth: 9
+  }
+}
+actions {
+  preamble {
+    id: 22952082
+    name: "MyIngress.send_to_cpu"
+    alias: "send_to_cpu"
   }
 }
 type_info {

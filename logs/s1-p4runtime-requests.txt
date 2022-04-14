@@ -1,66 +1,10 @@
 
-[2022-04-13 17:39:50.847] /p4.v1.P4Runtime/SetForwardingPipelineConfig
+[2022-04-14 13:31:01.495] /p4.v1.P4Runtime/SetForwardingPipelineConfig
 ---
-Message too long (16235 bytes)! Skipping log...
----
-
-[2022-04-13 17:39:50.849] /p4.v1.P4Runtime/Write
----
-election_id {
-  low: 1
-}
-updates {
-  type: MODIFY
-  entity {
-    table_entry {
-      table_id: 37375156
-      action {
-        action {
-          action_id: 25652968
-        }
-      }
-      is_default_action: true
-    }
-  }
-}
+Message too long (16394 bytes)! Skipping log...
 ---
 
-[2022-04-13 17:39:50.850] /p4.v1.P4Runtime/Write
----
-election_id {
-  low: 1
-}
-updates {
-  type: INSERT
-  entity {
-    table_entry {
-      table_id: 37375156
-      match {
-        field_id: 1
-        lpm {
-          value: "\n\000\001\001"
-          prefix_len: 32
-        }
-      }
-      action {
-        action {
-          action_id: 28792405
-          params {
-            param_id: 1
-            value: "\010\000\000\000\001\021"
-          }
-          params {
-            param_id: 2
-            value: "\000\001"
-          }
-        }
-      }
-    }
-  }
-}
----
-
-[2022-04-13 17:39:50.851] /p4.v1.P4Runtime/Write
+[2022-04-14 13:31:01.499] /p4.v1.P4Runtime/Write
 ---
 election_id {
   low: 1
@@ -91,6 +35,14 @@ updates {
         }
       }
     }
+  }
+}
+---
+
+[2022-04-14 13:31:01.501] /p4.v1.P4Runtime/Read
+---
+entities {
+  table_entry {
   }
 }
 ---
