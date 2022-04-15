@@ -7,6 +7,21 @@ class Host:
        self.mask = mask
        self.mac = mac
 
+  def mask_ip(self):
+       numbers = self.ip.split('.')
+       if self.mask <= 8:
+          numbers[0] = str(int(numbers[0]) & (2**self.mask-1))
+          return f'{numbers[0]}.0.0.0'
+       if self.mask <= 16:
+          numbers[1] = str(int(numbers[1]) & (2**(self.mask-8)-1))
+          return f'{numbers[0]}.{numbers[1]}.0.0'
+       if self.mask <= 24:
+          numbers[2] = str(int(numbers[2]) & (2**(self.mask-16)-1))
+          return f'{numbers[0]}.{numbers[1]}.{numbers[2]}.0'
+       if self.mask <= 32:
+          numbers[2] = str(int(numbers[3]) & (2**(self.mask-24)-1))
+          return f'{numbers[0]}.{numbers[1]}.{numbers[2]}.{numbers[3]}'
+
   def __str__(self):
        return f'{self.name} ip: {self.ip} mask: {self.mask} mac: {self.mac}' 
   def __repr__(self):

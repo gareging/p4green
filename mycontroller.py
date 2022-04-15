@@ -101,7 +101,7 @@ def main(p4info_file_path, bmv2_file_path):
     for hostid in json_data['hosts']:
        host_data = json_data['hosts'][hostid]
        ipmask = host_data['ip'].split('/')
-       host = Host(name=hostid, ip=ipmask[0], mask=ipmask[1], mac=host_data['mac'])
+       host = Host(name=hostid, ip=ipmask[0], mask=int(ipmask[1]), mac=host_data['mac'])
        hosts.append(host)
     #for host in hosts:
     #   print(host)
@@ -144,8 +144,8 @@ def main(p4info_file_path, bmv2_file_path):
            else:
               links[obj2] = [Link(obj1=obj2, obj2=obj1, obj1_port=dstport, obj2_port=srcport)]
 
-        for link in links[switches[0]]:
-            print(link)
+        #for link in links[switches[0]]:
+        #    print(link)
         #print('Total num of links of s6:', len(links[switches[4]]))
         paths = {}
         nhop = {}
@@ -171,6 +171,18 @@ def main(p4info_file_path, bmv2_file_path):
                                        bmv2_json_file_path=bmv2_file_path)
             print(f'Installed P4 Program using SetForwardingPipelineConfig on s{i}')
             i += 1
+            rules_installed = set()
+            for h in nhop[s]:
+                if nhop[s][h][1]:
+                    print(f'Installing on {s.name}: ip {h.ip} mask 32 mac_address {h.mac} port {nhop[s][h][0]}')
+                    writeForwardingRule(p4info_helper, sw=s, ip_address=h.ip, mask=32, mac_address=h.mac, port=nhop[s][h][0])
+                else:
+                    if (h.mask_ip(), h.mask) not in rules_installed:
+                        rules_installed.add((h.mask_ip(), h.mask))
+                        print(f'Installing on {s.name}: ip {h.mask_ip()} mask {h.mask} mac_address 08:00:00:00:02:22 port {nhop[s][h][0]}')
+                        writeForwardingRule(p4info_helper, sw=s, ip_address=h.mask_ip(), mask=h.mask, mac_address="08:00:00:00:02:22", port=nhop[s][h][0])
+
+        '''
         # Write the rules that tunnel traffic from h1 to h2
 #        writeTunnelRules(p4info_helper, ingress_sw=s1, egress_sw=s2, tunnel_id=100,
 #                         dst_eth_addr="08:00:00:00:02:22", dst_ip_addr="10.0.2.2")
@@ -198,7 +210,7 @@ def main(p4info_file_path, bmv2_file_path):
         writeForwardingRule(p4info_helper, sw=switches[1], ip_address="10.0.0.0", mask=8,
                             mac_address="08:00:00:00:04:44", port=3)
 
-
+        '''
         # TODO Uncomment the following two lines to read table entries from s1 and s2
         #readTableRules(p4info_helper, switches[0])
         # readTableRules(p4info_helper, s2)
