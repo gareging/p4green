@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 from time import sleep
-from host import Host, Link, get_path, print_path
+from host import Host, Link, Path
 import json
 
 import grpc
@@ -153,9 +153,9 @@ def main(p4info_file_path, bmv2_file_path):
             paths[s] = {}
             nhop[s] = {}
             for h in hosts:
-               path_info = get_path(links, s, h)
-               paths[s][h] = path_info[0]
-               nhop[s][h] = path_info[1]
+               path_info = Path(links, s, h)
+               paths[s][h] = path_info.path
+               nhop[s][h] = (path_info.nhop, path_info.onehop)
         #print('Done with the shortest path algorithm')
         for s in paths:
             print(s.name, 'next hops:', nhop[s])

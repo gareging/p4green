@@ -27,48 +27,56 @@ class Link:
      obj2 = self.obj2.name
      return f'{obj1}:{port1}-{obj2}:{port2}'
 
-def get_path(adjacency_list, src, dst):
-  if src not in adjacency_list:
-     return RuntimeError('Starting node is not in the graph')
+class Path:
+   def __init__(self, adjacency_list, src, dst):
+      self.path, self.nhop, self.onehop = self.get_path(adjacency_list, src, dst)
 
-  print('Get paths for', src.name, 'to', dst.name)
-  queue = deque([ src ])
-  visited_set = set()
-  previous = {}
-  out_port = {}
+   def get_path(self, adjacency_list, src, dst):
+      if src not in adjacency_list:
+          return RuntimeError('Starting node is not in the graph')
 
-  while len(queue) != 0:
-     #print('Visited nodes:', visited_set)
-     node = queue.popleft()
-     #print('At', node.name)
-     if node in visited_set:
-         continue
-     if node == dst:
-         #print('Got there!')
-         #print(previous)
-         path = deque([dst])
-         while previous[node] in previous:
-              #print('Previous hop:', previous[node])
-              path.appendleft(previous[node])
-              node = previous[node]
-         path.appendleft(src)
-         return path, out_port[path[1]]
+      #print('Get paths for', src.name, 'to', dst.name)
+      queue = deque([ src ])
+      visited_set = set()
+      previous = {}
+      out_port = {}
+      onehop = False
+      while len(queue) != 0:
+         #print('Visited nodes:', visited_set)
+         node = queue.popleft()
+         #print('At', node.name)
+         if node in visited_set:
+             continue
+         if node == dst:
+             #print('Got there!')
+             #print(previous)
+             path = deque([dst])
+             while previous[node] in previous:
+                  #print('Previous hop:', previous[node])
+                  path.appendleft(previous[node])
+                  node = previous[node]
+             path.appendleft(src)
+             if len(path) == 2:
+                  onehop = True
+             return path, out_port[path[1]], onehop
 
-     visited_set.add(node)
-     for link in adjacency_list[node]:
-         neighbor = link.obj2
-         if neighbor not in out_port:
-            out_port[neighbor] = link.obj1_port
-         if neighbor not in visited_set:
-            #print('To visit', neighbor.name)
-            queue.append(neighbor)
-            previous[neighbor] = node
+         visited_set.add(node)
+         for link in adjacency_list[node]:
+             neighbor = link.obj2
+             if neighbor not in out_port:
+                out_port[neighbor] = link.obj1_port
+             if neighbor not in visited_set:
+                #print('To visit', neighbor.name)
+                queue.append(neighbor)
+                previous[neighbor] = node
 
 
-  return []
+      return None, None, None
 
-def print_path(path):
-    i = 1
-    for hop in path:
-       print(f'Hop {i}: {hop.name}')
-       i += 1
+   def print_path(self):
+        if self.path == None:
+            return
+        i = 1
+        for hop in self.path:
+           print(f'Hop {i}: {hop.name}')
+           i += 1
