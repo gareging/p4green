@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 from time import sleep
-from host import Host, Link
+from host import Host, Link, get_path, print_path
 import json
 
 import grpc
@@ -101,7 +101,7 @@ def main(p4info_file_path, bmv2_file_path):
     for hostid in json_data['hosts']:
        host_data = json_data['hosts'][hostid]
        ipmask = host_data['ip'].split('/')
-       host = Host(id=hostid, ip=ipmask[0], mask=ipmask[1], mac=host_data['mac'])
+       host = Host(name=hostid, ip=ipmask[0], mask=ipmask[1], mac=host_data['mac'])
        hosts.append(host)
     #for host in hosts:
     #   print(host)
@@ -127,7 +127,7 @@ def main(p4info_file_path, bmv2_file_path):
            else:
                srcport = int(obj1[4])
                obj1 = switches[int(obj1[1])-1]
-           
+
            if obj2[0] == 'h':
                obj2 = hosts[int(obj2[1])-1]
                dstport = None
@@ -144,7 +144,24 @@ def main(p4info_file_path, bmv2_file_path):
            else:
               links[obj2] = [Link(obj1=obj2, obj2=obj1, obj1_port=dstport, obj2_port=srcport)]
 
-        print('Total num of links of s6:', len(links[switches[4]]))
+        for link in links[switches[0]]:
+            print(link)
+        #print('Total num of links of s6:', len(links[switches[4]]))
+        paths = {}
+        nhop = {}
+        for s in switches:
+            paths[s] = {}
+            nhop[s] = {}
+            for h in hosts:
+               path_info = get_path(links, s, h)
+               paths[s][h] = path_info[0]
+               nhop[s][h] = path_info[1]
+        #print('Done with the shortest path algorithm')
+        for s in paths:
+            print(s.name, 'next hops:', nhop[s])
+            #for h in paths[s]:
+            #  print(f'Path from {s.name} to {h.name}')
+            #  print_path(paths[s][h])
         # Send master arbitration update message to establish this controller as
         # master (required by P4Runtime before performing any other write operation)
         i = 1
