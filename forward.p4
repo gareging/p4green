@@ -4,10 +4,14 @@
 
 const bit<16> TYPE_IPV4 = 0x800;
 
+
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
 *************************************************************************/
 #define CPU_PORT 254
+#define ETHERTYPE_ARP 0x0806
+
+
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
@@ -17,6 +21,18 @@ header ethernet_t {
     macAddr_t dstAddr;
     macAddr_t srcAddr;
     bit<16>   etherType;
+}
+
+header arp_t {
+    bit<16> hwType;
+    bit<16> protoType;
+    bit<8> hwAddrLen;
+    bit<8> protoAddrLen;
+    bit<16> opcode;
+    bit<48> srcHwAddr;
+    bit<32> srcProtoAddr;
+    bit<48> dstHwAddr;
+    bit<32> dstProtoAddr;
 }
 
 header ipv4_t {
@@ -40,6 +56,7 @@ struct metadata {
 
 struct headers {
     ethernet_t   ethernet;
+    arp_t        arp;
     ipv4_t       ipv4;
 }
 
@@ -60,8 +77,13 @@ parser MyParser(packet_in packet,
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
             TYPE_IPV4: parse_ipv4;
+            ETHERTYPE_ARP: parse_arp;	    
             default: accept;
         }
+    }
+
+    state parse_arp {
+	packet.extract(hdr.arp);
     }
 
     state parse_ipv4 {
@@ -91,6 +113,10 @@ control MyIngress(inout headers hdr,
         mark_to_drop(standard_metadata);
     }
 
+    action broadcast(){
+       standard_metadata.mcast_grp = 1;
+    }
+
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
@@ -116,7 +142,11 @@ control MyIngress(inout headers hdr,
     }
 
     apply {
-        if (hdr.ipv4.isValid()) {
+//	if (hdr.arp.isValid() && hdr.arp.opcode == 1){
+	if (hdr.arp.isValid()){
+	    broadcast();
+	}
+        else if (hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
         }
     }
@@ -163,6 +193,7 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
+        packet.emit(hdr.arp);
         packet.emit(hdr.ipv4);
     }
 }

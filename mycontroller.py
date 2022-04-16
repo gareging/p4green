@@ -21,6 +21,15 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 SWITCH_TO_HOST_PORT = 1
 SWITCH_TO_SWITCH_PORT = 2
 
+def addMulticastingGroup(p4_info_helper, switches, links):
+    for sw in switches[:4]:
+        replicas = []
+        for i in range(1, 3):
+            replicas.append({'egress_port': i,  'instance': 1})
+        multicast_entry = p4_info_helper.buildMulticastGroupEntry(1, replicas)
+        sw.WritePREEntry(multicast_entry)
+        print('Done writing PRE entry')
+
 def writeForwardingRule(p4info_helper, sw, ip_address, mask, mac_address, port):
     """
     Installs three rules:
@@ -182,35 +191,7 @@ def main(p4info_file_path, bmv2_file_path):
                         print(f'Installing on {s.name}: ip {h.mask_ip()} mask {h.mask} mac_address 08:00:00:00:02:22 port {nhop[s][h][0]}')
                         writeForwardingRule(p4info_helper, sw=s, ip_address=h.mask_ip(), mask=h.mask, mac_address="08:00:00:00:02:22", port=nhop[s][h][0])
 
-        '''
-        # Write the rules that tunnel traffic from h1 to h2
-#        writeTunnelRules(p4info_helper, ingress_sw=s1, egress_sw=s2, tunnel_id=100,
-#                         dst_eth_addr="08:00:00:00:02:22", dst_ip_addr="10.0.2.2")
-
-        # Write the rules that tunnel traffic from h2 to h1
-        writeForwardingRule(p4info_helper, sw=switches[0], ip_address="10.0.1.2", mask=32,
-                            mac_address="08:00:00:00:02:22", port=2)
-        writeForwardingRule(p4info_helper, sw=switches[0], ip_address="10.0.1.1", mask = 32,
-                            mac_address="08:00:00:00:01:11", port=1)
-        writeForwardingRule(p4info_helper, sw=switches[0], ip_address="10.0.0.0", mask=8,
-                            mac_address="08:00:00:00:02:22", port=3)
-
-        writeForwardingRule(p4info_helper, sw=switches[4], ip_address="10.0.1.0", mask=24,
-                            mac_address="08:00:00:00:02:22", port=1)
-        writeForwardingRule(p4info_helper, sw=switches[4], ip_address="10.0.2.0", mask=24,
-                            mac_address="08:00:00:00:02:22", port=2)
-        writeForwardingRule(p4info_helper, sw=switches[4], ip_address="10.0.0.0", mask=8,
-                            mac_address="08:00:00:00:02:22", port=3)
-
-
-        writeForwardingRule(p4info_helper, sw=switches[1], ip_address="10.0.2.1", mask=32,
-                            mac_address="08:00:00:00:03:33", port=1)
-        writeForwardingRule(p4info_helper, sw=switches[1], ip_address="10.0.2.2", mask=32,
-                            mac_address="08:00:00:00:04:44", port=2)
-        writeForwardingRule(p4info_helper, sw=switches[1], ip_address="10.0.0.0", mask=8,
-                            mac_address="08:00:00:00:04:44", port=3)
-
-        '''
+        addMulticastingGroup(p4info_helper, switches, links)
         # TODO Uncomment the following two lines to read table entries from s1 and s2
         #readTableRules(p4info_helper, switches[0])
         # readTableRules(p4info_helper, s2)

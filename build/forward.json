@@ -38,8 +38,23 @@
       ]
     },
     {
-      "name" : "ipv4_t",
+      "name" : "arp_t",
       "id" : 3,
+      "fields" : [
+        ["hwType", 16, false],
+        ["protoType", 16, false],
+        ["hwAddrLen", 8, false],
+        ["protoAddrLen", 8, false],
+        ["opcode", 16, false],
+        ["srcHwAddr", 48, false],
+        ["srcProtoAddr", 32, false],
+        ["dstHwAddr", 48, false],
+        ["dstProtoAddr", 32, false]
+      ]
+    },
+    {
+      "name" : "ipv4_t",
+      "id" : 4,
       "fields" : [
         ["version", 4, false],
         ["ihl", 4, false],
@@ -79,8 +94,15 @@
       "pi_omit" : true
     },
     {
-      "name" : "ipv4",
+      "name" : "arp",
       "id" : 3,
+      "header_type" : "arp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ipv4",
+      "id" : 4,
       "header_type" : "ipv4_t",
       "metadata" : false,
       "pi_omit" : true
@@ -129,6 +151,12 @@
               "next_state" : "parse_ipv4"
             },
             {
+              "type" : "hexstr",
+              "value" : "0x0806",
+              "mask" : null,
+              "next_state" : "parse_arp"
+            },
+            {
               "type" : "default",
               "value" : null,
               "mask" : null,
@@ -143,8 +171,32 @@
           ]
         },
         {
-          "name" : "parse_ipv4",
+          "name" : "parse_arp",
           "id" : 1,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "arp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_ipv4",
+          "id" : 2,
           "parser_ops" : [
             {
               "parameters" : [
@@ -176,11 +228,11 @@
       "id" : 0,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 163,
+        "line" : 193,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
-      "order" : ["ethernet", "ipv4"],
+      "order" : ["ethernet", "arp", "ipv4"],
       "primitives" : []
     }
   ],
@@ -193,7 +245,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 141,
+        "line" : 171,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },
@@ -255,8 +307,34 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.ipv4_forward",
+      "name" : "MyIngress.broadcast",
       "id" : 1,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "mcast_grp"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0001"
+            }
+          ],
+          "source_info" : {
+            "filename" : "forward.p4",
+            "line" : 117,
+            "column" : 7,
+            "source_fragment" : "standard_metadata.mcast_grp = 1"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.ipv4_forward",
+      "id" : 2,
       "runtime_data" : [
         {
           "name" : "dstAddr",
@@ -282,7 +360,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 95,
+            "line" : 121,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = port"
           }
@@ -301,7 +379,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 96,
+            "line" : 122,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
           }
@@ -320,7 +398,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 97,
+            "line" : 123,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
           }
@@ -362,7 +440,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 98,
+            "line" : 124,
             "column" : 8,
             "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
           }
@@ -371,7 +449,7 @@
     },
     {
       "name" : "MyIngress.send_to_cpu",
-      "id" : 2,
+      "id" : 3,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -388,7 +466,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 102,
+            "line" : 128,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = 254"
           }
@@ -402,18 +480,47 @@
       "id" : 0,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 87,
+        "line" : 109,
         "column" : 8,
         "source_fragment" : "MyIngress"
       },
       "init_table" : "node_2",
       "tables" : [
         {
-          "name" : "MyIngress.ipv4_lpm",
+          "name" : "tbl_broadcast",
           "id" : 0,
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 105,
+            "line" : 147,
+            "column" : 5,
+            "source_fragment" : "broadcast()"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [1],
+          "actions" : ["MyIngress.broadcast"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "MyIngress.broadcast" : null
+          },
+          "default_entry" : {
+            "action_id" : 1,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.ipv4_lpm",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "forward.p4",
+            "line" : 131,
             "column" : 10,
             "source_fragment" : "ipv4_lpm"
           },
@@ -431,7 +538,7 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [1, 2, 0],
+          "action_ids" : [2, 3, 0],
           "actions" : ["MyIngress.ipv4_forward", "MyIngress.send_to_cpu", "NoAction"],
           "base_default_next" : null,
           "next_tables" : {
@@ -440,7 +547,7 @@
             "NoAction" : null
           },
           "default_entry" : {
-            "action_id" : 2,
+            "action_id" : 3,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -454,8 +561,31 @@
           "id" : 0,
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 119,
-            "column" : 12,
+            "line" : 146,
+            "column" : 5,
+            "source_fragment" : "hdr.arp.isValid()"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["arp", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "tbl_broadcast",
+          "false_next" : "node_4"
+        },
+        {
+          "name" : "node_4",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "forward.p4",
+            "line" : 149,
+            "column" : 17,
             "source_fragment" : "hdr.ipv4.isValid()"
           },
           "expression" : {
@@ -479,7 +609,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 129,
+        "line" : 159,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -495,7 +625,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 141,
+        "line" : 171,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },

@@ -1,10 +1,10 @@
 
-[2022-04-15 18:10:37.434] /p4.v1.P4Runtime/SetForwardingPipelineConfig
+[2022-04-16 01:58:48.871] /p4.v1.P4Runtime/SetForwardingPipelineConfig
 ---
-Message too long (16407 bytes)! Skipping log...
+Message too long (20271 bytes)! Skipping log...
 ---
 
-[2022-04-15 18:10:37.437] /p4.v1.P4Runtime/Write
+[2022-04-16 01:58:48.875] /p4.v1.P4Runtime/Write
 ---
 device_id: 1
 election_id {
@@ -40,7 +40,7 @@ updates {
 }
 ---
 
-[2022-04-15 18:10:37.440] /p4.v1.P4Runtime/Write
+[2022-04-16 01:58:48.877] /p4.v1.P4Runtime/Write
 ---
 device_id: 1
 election_id {
@@ -76,7 +76,7 @@ updates {
 }
 ---
 
-[2022-04-15 18:10:37.446] /p4.v1.P4Runtime/Write
+[2022-04-16 01:58:48.879] /p4.v1.P4Runtime/Write
 ---
 device_id: 1
 election_id {
@@ -112,7 +112,7 @@ updates {
 }
 ---
 
-[2022-04-15 18:10:37.449] /p4.v1.P4Runtime/Write
+[2022-04-16 01:58:48.882] /p4.v1.P4Runtime/Write
 ---
 device_id: 1
 election_id {
@@ -148,7 +148,7 @@ updates {
 }
 ---
 
-[2022-04-15 18:10:37.454] /p4.v1.P4Runtime/Write
+[2022-04-16 01:58:48.884] /p4.v1.P4Runtime/Write
 ---
 device_id: 1
 election_id {
@@ -184,7 +184,7 @@ updates {
 }
 ---
 
-[2022-04-15 18:10:37.459] /p4.v1.P4Runtime/Write
+[2022-04-16 01:58:48.885] /p4.v1.P4Runtime/Write
 ---
 device_id: 1
 election_id {
@@ -213,6 +213,32 @@ updates {
             param_id: 2
             value: "\000\004"
           }
+        }
+      }
+    }
+  }
+}
+---
+
+[2022-04-16 01:58:48.958] /p4.v1.P4Runtime/Write
+---
+device_id: 1
+election_id {
+  low: 1
+}
+updates {
+  type: INSERT
+  entity {
+    packet_replication_engine_entry {
+      multicast_group_entry {
+        multicast_group_id: 1
+        replicas {
+          egress_port: 1
+          instance: 1
+        }
+        replicas {
+          egress_port: 2
+          instance: 1
         }
       }
     }
