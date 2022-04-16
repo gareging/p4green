@@ -41,6 +41,13 @@ actions {
 }
 actions {
   preamble {
+    id: 21954141
+    name: "MyIngress.ecnp"
+    alias: "ecnp"
+  }
+}
+actions {
+  preamble {
     id: 28792405
     name: "MyIngress.ipv4_forward"
     alias: "ipv4_forward"
@@ -62,6 +69,21 @@ actions {
     name: "MyIngress.send_to_cpu"
     alias: "send_to_cpu"
   }
+}
+registers {
+  preamble {
+    id: 374863487
+    name: "MyIngress.switch_type"
+    alias: "switch_type"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 3
+      }
+    }
+  }
+  size: 1
 }
 type_info {
 }

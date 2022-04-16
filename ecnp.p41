@@ -10,9 +10,7 @@ const bit<16> TYPE_IPV4 = 0x800;
 *************************************************************************/
 #define CPU_PORT 254
 #define ETHERTYPE_ARP 0x0806
-#define ACCESS_SWITCH 0
-#define AGGREG_SWITCH 1
-#define CORE_SWITCH 2
+
 
 
 typedef bit<9>  egressSpec_t;
@@ -111,9 +109,6 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
-
-    register<bit<3>>(1) switch_type; 
-
     action drop() {
         mark_to_drop(standard_metadata);
     }
@@ -126,19 +121,6 @@ control MyIngress(inout headers hdr,
 
     action broadcast(){
        standard_metadata.mcast_grp = 1;
-    }
-
-    action ecnp(){
-	bit<16> base = 1;
-	bit<32> width = 2;
-        hash(standard_metadata.egress_spec,
-            HashAlgorithm.crc16,
-            base,
-            { hdr.ipv4.srcAddr,
-              hdr.ipv4.dstAddr,
-              hdr.ipv4.protocol
-	    },
-            width);
     }
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
@@ -171,16 +153,8 @@ control MyIngress(inout headers hdr,
 	     //broadcast();
 	     send_back();	
 	}
-        else if (hdr.ipv4.isValid()) {
-	    bit<3> type;
-	    switch_type.read(type, 0);
-	    if (type == ACCESS_SWITCH || (type == CORE_SWITCH && standard_metadata.ingress_port != 3)){	
-		ipv4_lpm.apply();
-	    }
-            else if (type == CORE_SWITCH){
-                ecnp();
-            }
-		
+        else if (hdr.ipv4.isValid() && standard_metadata.ingress_port != 1) {
+            ipv4_lpm.apply();
         }
     }
 }
