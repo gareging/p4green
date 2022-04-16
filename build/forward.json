@@ -228,7 +228,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 193,
+        "line" : 200,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
@@ -245,7 +245,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 171,
+        "line" : 178,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },
@@ -307,7 +307,7 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.broadcast",
+      "name" : "MyIngress.send_back",
       "id" : 1,
       "runtime_data" : [],
       "primitives" : [
@@ -316,18 +316,56 @@
           "parameters" : [
             {
               "type" : "field",
-              "value" : ["standard_metadata", "mcast_grp"]
+              "value" : ["arp", "opcode"]
             },
             {
               "type" : "hexstr",
-              "value" : "0x0001"
+              "value" : "0x0002"
             }
           ],
           "source_info" : {
             "filename" : "forward.p4",
             "line" : 117,
-            "column" : 7,
-            "source_fragment" : "standard_metadata.mcast_grp = 1"
+            "column" : 1,
+            "source_fragment" : "hdr.arp.opcode = 2"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["arp", "srcProtoAddr"]
+            },
+            {
+              "type" : "field",
+              "value" : ["arp", "dstProtoAddr"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "forward.p4",
+            "line" : 118,
+            "column" : 1,
+            "source_fragment" : "hdr.arp.srcProtoAddr = hdr.arp.dstProtoAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "ingress_port"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "forward.p4",
+            "line" : 119,
+            "column" : 1,
+            "source_fragment" : "standard_metadata.egress_spec = standard_metadata.ingress_port"
           }
         }
       ]
@@ -360,7 +398,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 121,
+            "line" : 127,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = port"
           }
@@ -379,7 +417,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 122,
+            "line" : 128,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
           }
@@ -398,7 +436,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 123,
+            "line" : 129,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
           }
@@ -440,7 +478,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 124,
+            "line" : 130,
             "column" : 8,
             "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
           }
@@ -466,7 +504,7 @@
           ],
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 128,
+            "line" : 134,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = 254"
           }
@@ -487,13 +525,13 @@
       "init_table" : "node_2",
       "tables" : [
         {
-          "name" : "tbl_broadcast",
+          "name" : "tbl_send_back",
           "id" : 0,
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 147,
-            "column" : 5,
-            "source_fragment" : "broadcast()"
+            "line" : 154,
+            "column" : 6,
+            "source_fragment" : "send_back()"
           },
           "key" : [],
           "match_type" : "exact",
@@ -503,10 +541,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [1],
-          "actions" : ["MyIngress.broadcast"],
+          "actions" : ["MyIngress.send_back"],
           "base_default_next" : null,
           "next_tables" : {
-            "MyIngress.broadcast" : null
+            "MyIngress.send_back" : null
           },
           "default_entry" : {
             "action_id" : 1,
@@ -520,7 +558,7 @@
           "id" : 1,
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 131,
+            "line" : 137,
             "column" : 10,
             "source_fragment" : "ipv4_lpm"
           },
@@ -561,7 +599,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 146,
+            "line" : 152,
             "column" : 5,
             "source_fragment" : "hdr.arp.isValid()"
           },
@@ -576,7 +614,7 @@
               }
             }
           },
-          "true_next" : "tbl_broadcast",
+          "true_next" : "tbl_send_back",
           "false_next" : "node_4"
         },
         {
@@ -584,7 +622,7 @@
           "id" : 1,
           "source_info" : {
             "filename" : "forward.p4",
-            "line" : 149,
+            "line" : 156,
             "column" : 17,
             "source_fragment" : "hdr.ipv4.isValid()"
           },
@@ -609,7 +647,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 159,
+        "line" : 166,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -625,7 +663,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "forward.p4",
-        "line" : 171,
+        "line" : 178,
         "column" : 8,
         "source_fragment" : "update_checksum( ..."
       },

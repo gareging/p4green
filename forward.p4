@@ -113,6 +113,12 @@ control MyIngress(inout headers hdr,
         mark_to_drop(standard_metadata);
     }
 
+    action send_back(){
+	hdr.arp.opcode = 2;
+	hdr.arp.srcProtoAddr = hdr.arp.dstProtoAddr;
+	standard_metadata.egress_spec = standard_metadata.ingress_port;
+    }
+
     action broadcast(){
        standard_metadata.mcast_grp = 1;
     }
@@ -144,7 +150,8 @@ control MyIngress(inout headers hdr,
     apply {
 //	if (hdr.arp.isValid() && hdr.arp.opcode == 1){
 	if (hdr.arp.isValid()){
-	    broadcast();
+	     //broadcast();
+	     send_back();	
 	}
         else if (hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
