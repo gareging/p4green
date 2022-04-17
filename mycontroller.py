@@ -5,9 +5,9 @@ import sys
 from time import sleep
 from host import Host, Link, Path
 import json
-
+import bmpy_utils as utils
 import grpc
-
+from  runtime_CLI import RuntimeAPI, load_json_config
 # Import P4Runtime lib from parent utils dir
 # Probably there's a better way of doing this.
 sys.path.append(
@@ -20,6 +20,14 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 
 SWITCH_TO_HOST_PORT = 1
 SWITCH_TO_SWITCH_PORT = 2
+
+def changeSwitchType(sw, value):
+    sw_port_shift = int(sw.name[1:])
+    standard_client, mc_client = utils.thrift_connect('localhost', 9089+sw_port_shift, RuntimeAPI.get_thrift_services(1))
+    load_json_config(standard_client, None)
+    register_name = 'switch_type'
+    runtime_api = RuntimeAPI('SimplePre', standard_client, mc_client)
+    runtime_api.do_register_write(f'{register_name} 0 {value}')
 
 def addMulticastingGroup(p4_info_helper, switches, links):
     for sw in switches[:4]:
@@ -195,7 +203,12 @@ def main(p4info_file_path, bmv2_file_path):
         # TODO Uncomment the following two lines to read table entries from s1 and s2
         #readTableRules(p4info_helper, switches[0])
         # readTableRules(p4info_helper, s2)
+        for i in range(4, 6):
+            # Change switch type to aggr for 4,5
+            changeSwitchType(switches[i], 1)
 
+        # change core switch type
+        changeSwitchType(switches[6], 2)
         # Print the tunnel counters every 2 seconds
         while True:
             sleep(2)

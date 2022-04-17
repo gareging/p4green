@@ -174,7 +174,7 @@ control MyIngress(inout headers hdr,
         else if (hdr.ipv4.isValid()) {
 	    bit<3> type;
 	    switch_type.read(type, 0);
-	    if (type == ACCESS_SWITCH || (type == CORE_SWITCH && standard_metadata.ingress_port != 3)){	
+		if (type == ACCESS_SWITCH || type == AGGREG_SWITCH || (type == CORE_SWITCH && standard_metadata.ingress_port != 3)){	
 		ipv4_lpm.apply();
 	    }
             else if (type == CORE_SWITCH){
