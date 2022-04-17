@@ -190,6 +190,7 @@ def main(p4info_file_path, bmv2_file_path):
             i += 1
             rules_installed = set()
             for h in nhop[s]:
+                # if it is a "one hop" path (i.e. it's an access switch for the host)
                 if nhop[s][h][1]:
                     print(f'Installing on {s.name}: ip {h.ip} mask 32 mac_address {h.mac} port {nhop[s][h][0]}')
                     writeForwardingRule(p4info_helper, sw=s, ip_address=h.ip, mask=32, mac_address=h.mac, port=nhop[s][h][0])
