@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 from time import sleep
-from host import Host, Link, Path
+from host import Host, Link, Path, Switch, add_link
 import json
 import bmpy_utils as utils
 import grpc
@@ -132,7 +132,8 @@ def main(p4info_file_path, bmv2_file_path):
         # this is backed by a P4Runtime gRPC connection.
         # Also, dump all P4Runtime messages sent to switch to given txt files.
         for i in range(1, num_of_switches+1):
-            s = p4runtime_lib.bmv2.Bmv2SwitchConnection(name=f's{i}',address=f'127.0.0.1:5005{i}',device_id=i-1,proto_dump_file=f'logs/s{i}-p4runtime-requests.txt')
+#            s = p4runtime_lib.bmv2.Bmv2SwitchConnection(name=f's{i}',address=f'127.0.0.1:5005{i}',device_id=i-1,proto_dump_file=f'logs/s{i}-p4runtime-requests.txt')
+            s = Switch(name=f's{i}',address=f'127.0.0.1:5005{i}',device_id=i-1,proto_dump_file=f'logs/s{i}-p4runtime-requests.txt')
             switches.append(s)
 
         for link_data in json_data['links']:
@@ -151,15 +152,20 @@ def main(p4info_file_path, bmv2_file_path):
            else:
                dstport = int(obj2[4])
                obj2 = switches[int(obj2[1])-1]
-           if obj1 in links:
-              links[obj1].append(Link(obj1=obj1, obj2=obj2, obj1_port=srcport, obj2_port=dstport))
-           else:
-              links[obj1] = [Link(obj1=obj1, obj2=obj2, obj1_port=srcport, obj2_port=dstport)]
 
-           if obj2 in links:
-              links[obj2].append(Link(obj1=obj2, obj2=obj1, obj1_port=dstport, obj2_port=srcport))
-           else:
-              links[obj2] = [Link(obj1=obj2, obj2=obj1, obj1_port=dstport, obj2_port=srcport)]
+           #######START ECNP ONLY SWITCH##########
+           # exclude s6 as an ecnp-only switch
+           if obj1.name == 's6':
+              add_link(links, obj1, obj2, srcport, dstport)
+              continue
+
+           if obj2.name == 's6':
+              add_link(links, obj2, obj1, dstport, srcport)
+              continue
+           #######END ECNP ONLY SWITCH##########
+
+           add_link(links, obj1, obj2, srcport, dstport)
+           add_link(links, obj2, obj1, dstport, srcport)
 
         #for link in links[switches[0]]:
         #    print(link)
@@ -211,9 +217,9 @@ def main(p4info_file_path, bmv2_file_path):
         # change core switch type
         changeSwitchType(switches[6], 2)
         # Print the tunnel counters every 2 seconds
-        while True:
-            sleep(2)
-            print('\n----- Reading tunnel counters -----')
+#        while True:
+#            sleep(2)
+#            print('\n----- Reading tunnel counters -----')
 #            printCounter(p4info_helper, s1, "MyIngress.ingressTunnelCounter", 100)
 #            printCounter(p4info_helper, s2, "MyIngress.egressTunnelCounter", 100)
 #            printCounter(p4info_helper, s2, "MyIngress.ingressTunnelCounter", 200)

@@ -1,4 +1,15 @@
 from collections import deque
+import p4runtime_lib.bmv2
+
+def add_link(links, obj1, obj2, srcport, dstport):
+ if obj1 in links:
+       links[obj1].append(Link(obj1=obj1, obj2=obj2, obj1_port=srcport, obj2_port=dstport))
+ else:
+       links[obj1] = [Link(obj1=obj1, obj2=obj2, obj1_port=srcport, obj2_port=dstport)]
+
+class Switch(p4runtime_lib.bmv2.Bmv2SwitchConnection):
+ def __repr__(self):
+       return f'{self.name}'
 
 class Host:
   def __init__(self, name, ip, mask, mac):
@@ -35,31 +46,33 @@ class Link:
      self.obj1_port = obj1_port
      self.obj2_port = obj2_port
 
-  def __str__(self):
+  def __repr__(self):
      port1 = self.obj1_port if self.obj1_port else ''
      port2 = self.obj2_port if self.obj2_port else ''
      obj1 = self.obj1.name
      obj2 = self.obj2.name
      return f'{obj1}:{port1}-{obj2}:{port2}'
 
+
 class Path:
    def __init__(self, adjacency_list, src, dst):
       self.path, self.nhop, self.onehop = self.get_path(adjacency_list, src, dst)
 
-   def get_path(self, adjacency_list, src, dst):
+   def get_path(self, adjacency_list, src, dst, logging=False):
       if src not in adjacency_list:
           return RuntimeError('Starting node is not in the graph')
-
-      #print('Get paths for', src.name, 'to', dst.name)
+      if logging:
+         print('Get paths for', src.name, 'to', dst.name)
       queue = deque([ src ])
       visited_set = set()
       previous = {}
       out_port = {}
       onehop = False
       while len(queue) != 0:
-         #print('Visited nodes:', visited_set)
          node = queue.popleft()
-         #print('At', node.name)
+         if logging:
+             print('Visited nodes:', visited_set)
+             print('At', node.name)
          if node in visited_set:
              continue
          if node == dst:
@@ -81,8 +94,11 @@ class Path:
              if neighbor not in out_port:
                 out_port[neighbor] = link.obj1_port
              if neighbor not in visited_set:
-                #print('To visit', neighbor.name)
+                if logging:
+                    print('To visit', neighbor.name)
                 queue.append(neighbor)
+                if logging and neighbor in previous:
+                    print('Rewriting a previous for', neighbor)
                 previous[neighbor] = node
 
 

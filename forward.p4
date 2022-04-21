@@ -128,8 +128,15 @@ control MyIngress(inout headers hdr,
        standard_metadata.mcast_grp = 1;
     }
 
-    action ecnp(){
-	bit<16> base = 1;
+    action ecnp(bit<3> type){
+	bit<16> base;
+	if (type == CORE_SWITCH){
+	    base = 1;
+	}
+	else{
+	    base = 3;
+	}
+	
 	bit<32> width = 2;
         hash(standard_metadata.egress_spec,
             HashAlgorithm.crc16,
@@ -178,7 +185,7 @@ control MyIngress(inout headers hdr,
 		ipv4_lpm.apply();
 	    }
             else if (type == CORE_SWITCH){
-                ecnp();
+                ecnp(type);
             }
 		
         }

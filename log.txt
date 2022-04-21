@@ -1,0 +1,103 @@
+Number of swistches: 7
+s1 next hops: {h1: (1, True), h2: (2, True), h3: (3, False), h4: (3, False), h5: (3, False), h6: (3, False), h7: (3, False), h8: (3, False), h9: (3, False)}
+s2 next hops: {h1: (3, False), h2: (3, False), h3: (1, True), h4: (2, True), h5: (3, False), h6: (3, False), h7: (3, False), h8: (3, False), h9: (3, False)}
+s3 next hops: {h1: (3, False), h2: (3, False), h3: (3, False), h4: (3, False), h5: (1, True), h6: (2, True), h7: (3, False), h8: (3, False), h9: (3, False)}
+s4 next hops: {h1: (3, False), h2: (3, False), h3: (3, False), h4: (3, False), h5: (3, False), h6: (3, False), h7: (1, True), h8: (2, True), h9: (3, False)}
+s5 next hops: {h1: (1, False), h2: (1, False), h3: (2, False), h4: (2, False), h5: (3, False), h6: (3, False), h7: (4, False), h8: (4, False), h9: (5, False)}
+s6 next hops: {h1: (1, False), h2: (1, False), h3: (2, False), h4: (2, False), h5: (3, False), h6: (3, False), h7: (4, False), h8: (4, False), h9: (5, False)}
+s7 next hops: {h1: (1, False), h2: (1, False), h3: (1, False), h4: (1, False), h5: (1, False), h6: (1, False), h7: (1, False), h8: (1, False), h9: (3, True)}
+Installed P4 Program using SetForwardingPipelineConfig on s1
+Installing on s1: ip 10.0.1.1 mask 32 mac_address 08:00:00:00:01:11 port 1
+Installed ingress forwarding rule on s1
+Installing on s1: ip 10.0.1.2 mask 32 mac_address 08:00:00:00:02:22 port 2
+Installed ingress forwarding rule on s1
+Installing on s1: ip 10.0.2.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s1
+Installing on s1: ip 10.0.3.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s1
+Installing on s1: ip 10.0.4.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s1
+Installing on s1: ip 11.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s1
+Installed P4 Program using SetForwardingPipelineConfig on s2
+Installing on s2: ip 10.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s2
+Installing on s2: ip 10.0.2.1 mask 32 mac_address 08:00:00:00:03:33 port 1
+Installed ingress forwarding rule on s2
+Installing on s2: ip 10.0.2.2 mask 32 mac_address 08:00:00:00:04:44 port 2
+Installed ingress forwarding rule on s2
+Installing on s2: ip 10.0.3.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s2
+Installing on s2: ip 10.0.4.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s2
+Installing on s2: ip 11.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s2
+Installed P4 Program using SetForwardingPipelineConfig on s3
+Installing on s3: ip 10.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s3
+Installing on s3: ip 10.0.2.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s3
+Installing on s3: ip 10.0.3.1 mask 32 mac_address 08:00:00:00:05:55 port 1
+Installed ingress forwarding rule on s3
+Installing on s3: ip 10.0.3.2 mask 32 mac_address 08:00:00:00:06:66 port 2
+Installed ingress forwarding rule on s3
+Installing on s3: ip 10.0.4.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s3
+Installing on s3: ip 11.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s3
+Installed P4 Program using SetForwardingPipelineConfig on s4
+Installing on s4: ip 10.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s4
+Installing on s4: ip 10.0.2.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s4
+Installing on s4: ip 10.0.3.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s4
+Installing on s4: ip 10.0.4.1 mask 32 mac_address 08:00:00:00:07:77 port 1
+Installed ingress forwarding rule on s4
+Installing on s4: ip 10.0.4.2 mask 32 mac_address 08:00:00:00:08:88 port 2
+Installed ingress forwarding rule on s4
+Installing on s4: ip 11.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s4
+Installed P4 Program using SetForwardingPipelineConfig on s5
+Installing on s5: ip 10.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 1
+Installed ingress forwarding rule on s5
+Installing on s5: ip 10.0.2.0 mask 24 mac_address 08:00:00:00:02:22 port 2
+Installed ingress forwarding rule on s5
+Installing on s5: ip 10.0.3.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s5
+Installing on s5: ip 10.0.4.0 mask 24 mac_address 08:00:00:00:02:22 port 4
+Installed ingress forwarding rule on s5
+Installing on s5: ip 11.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 5
+Installed ingress forwarding rule on s5
+Installed P4 Program using SetForwardingPipelineConfig on s6
+Installing on s6: ip 10.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 1
+Installed ingress forwarding rule on s6
+Installing on s6: ip 10.0.2.0 mask 24 mac_address 08:00:00:00:02:22 port 2
+Installed ingress forwarding rule on s6
+Installing on s6: ip 10.0.3.0 mask 24 mac_address 08:00:00:00:02:22 port 3
+Installed ingress forwarding rule on s6
+Installing on s6: ip 10.0.4.0 mask 24 mac_address 08:00:00:00:02:22 port 4
+Installed ingress forwarding rule on s6
+Installing on s6: ip 11.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 5
+Installed ingress forwarding rule on s6
+Installed P4 Program using SetForwardingPipelineConfig on s7
+Installing on s7: ip 10.0.1.0 mask 24 mac_address 08:00:00:00:02:22 port 1
+Installed ingress forwarding rule on s7
+Installing on s7: ip 10.0.2.0 mask 24 mac_address 08:00:00:00:02:22 port 1
+Installed ingress forwarding rule on s7
+Installing on s7: ip 10.0.3.0 mask 24 mac_address 08:00:00:00:02:22 port 1
+Installed ingress forwarding rule on s7
+Installing on s7: ip 10.0.4.0 mask 24 mac_address 08:00:00:00:02:22 port 1
+Installed ingress forwarding rule on s7
+Installing on s7: ip 11.0.1.1 mask 32 mac_address 08:00:00:00:09:99 port 3
+Installed ingress forwarding rule on s7
+Done writing PRE entry
+Done writing PRE entry
+Done writing PRE entry
+Done writing PRE entry
+Obtaining JSON from switch...
+Done
+Obtaining JSON from switch...
+Done
+Obtaining JSON from switch...
+Done
