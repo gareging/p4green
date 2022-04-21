@@ -54,6 +54,8 @@ header ipv4_t {
 
 struct metadata {
     /* empty */
+    bit<9> egress_candidate;
+    bit<9> ecnp_candidate;
 }
 
 struct headers {
@@ -123,30 +125,11 @@ control MyIngress(inout headers hdr,
 	hdr.arp.opcode = 2;
 	hdr.arp.srcProtoAddr = hdr.arp.dstProtoAddr;
 	standard_metadata.egress_spec = standard_metadata.ingress_port;
+	//meta.egress_candidate = standard_metadata.ingress_port;
     }
 
     action broadcast(){
        standard_metadata.mcast_grp = 1;
-    }
-
-    action ecnp(bit<2> type){
-	bit<16> base;
-	if (type == CORE_SWITCH){
-	    base = 1;
-	}
-	else{
-	    base = 3;
-	}
-	
-	bit<32> width = 2;
-        hash(standard_metadata.egress_spec,
-            HashAlgorithm.crc16,
-            base,
-            { hdr.ipv4.srcAddr,
-              hdr.ipv4.dstAddr,
-              hdr.ipv4.protocol
-	    },
-            width);
     }
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
@@ -156,21 +139,15 @@ control MyIngress(inout headers hdr,
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
-    action send_to_cpu() {
-        standard_metadata.egress_spec = CPU_PORT;
-    }
-
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: lpm;
         }
         actions = {
             ipv4_forward;
-	    send_to_cpu;
             NoAction;
         }
         size = 1024;
-        default_action = send_to_cpu();
     }
 
     apply {
@@ -179,23 +156,32 @@ control MyIngress(inout headers hdr,
 	}
         else if (hdr.ipv4.isValid()) {
 	    bit<2> type;
+            bit<1> ecnp_md;	
             switch_type.read(type, 0);
+	    ecnp_mode.read(ecnp_md, 0);
 
-	    if (type == AGGREG_SWITCH) {
-		ipv4_lpm.apply();
+	    if (ecnp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == 3) {
+		    hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)1,
+			{ hdr.ipv4.srcAddr,
+			  hdr.ipv4.dstAddr,
+			  hdr.ipv4.protocol
+			}, (bit<32>)2);
 	    }
-	    else {
-		bit<1> ecnp_md;	
-		ecnp_mode.read(ecnp_md, 0);
-		if (type == CORE_SWITCH && ecnp_md == 1 && standard_metadata.ingress_port == 3){
-		    ecnp(type);
+	    else{
+		ipv4_lpm.apply();
+
+		if (ecnp_md == 1 && type == ACCESS_SWITCH) {
+		    if (standard_metadata.egress_spec > 2) {
+			hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)3,
+			    { hdr.ipv4.srcAddr,
+				hdr.ipv4.dstAddr,
+				hdr.ipv4.protocol
+			    }, (bit<32>)2);
+		    }
 		}
-                else
-		{
-		    ipv4_lpm.apply();
-		}
-	   }
+	    }
         }
+	//standard_metadata.egress_spec = meta.egress_candidate;
     }
 }
 

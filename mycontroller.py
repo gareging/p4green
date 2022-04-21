@@ -21,6 +21,12 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 SWITCH_TO_HOST_PORT = 1
 SWITCH_TO_SWITCH_PORT = 2
 
+def ecnpModeControlCLI(switches):
+   print('ECNP control menu')
+   sw_id = int(input('Enter switch ID:'))
+   mode = int(input('Enter ECNP mode (0 or 1): '))
+   modifyRegister(switches[sw_id-1], 'ecnp_mode', 0, mode)
+
 def modifyRegister(sw, register_name, index, value):
     sw_port_shift = int(sw.name[1:])
     standard_client, mc_client = utils.thrift_connect('localhost', 9089+sw_port_shift, RuntimeAPI.get_thrift_services(1))
@@ -217,7 +223,8 @@ def main(p4info_file_path, bmv2_file_path):
         modifyRegister(switches[6], 'ecnp_mode', 0, 1)
 
         # Print the tunnel counters every 2 seconds
-#        while True:
+        while True:
+             ecnpModeControlCLI(switches)
 #            sleep(2)
 #            print('\n----- Reading tunnel counters -----')
 #            printCounter(p4info_helper, s1, "MyIngress.ingressTunnelCounter", 100)
