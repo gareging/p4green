@@ -21,13 +21,12 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 SWITCH_TO_HOST_PORT = 1
 SWITCH_TO_SWITCH_PORT = 2
 
-def changeSwitchType(sw, value):
+def modifyRegister(sw, register_name, index, value):
     sw_port_shift = int(sw.name[1:])
     standard_client, mc_client = utils.thrift_connect('localhost', 9089+sw_port_shift, RuntimeAPI.get_thrift_services(1))
     load_json_config(standard_client, None)
-    register_name = 'switch_type'
     runtime_api = RuntimeAPI('SimplePre', standard_client, mc_client)
-    runtime_api.do_register_write(f'{register_name} 0 {value}')
+    runtime_api.do_register_write(f'{register_name} {index} {value}')
 
 def addMulticastingGroup(p4_info_helper, switches, links):
     for sw in switches[:4]:
@@ -207,15 +206,16 @@ def main(p4info_file_path, bmv2_file_path):
                         writeForwardingRule(p4info_helper, sw=s, ip_address=h.mask_ip(), mask=h.mask, mac_address="08:00:00:00:02:22", port=nhop[s][h][0])
 
         addMulticastingGroup(p4info_helper, switches, links)
-        # TODO Uncomment the following two lines to read table entries from s1 and s2
-        #readTableRules(p4info_helper, switches[0])
-        # readTableRules(p4info_helper, s2)
         for i in range(4, 6):
             # Change switch type to aggr for 4,5
-            changeSwitchType(switches[i], 1)
+            modifyRegister(switches[i], 'switch_type', 0, 1)
 
         # change core switch type
-        changeSwitchType(switches[6], 2)
+        modifyRegister(switches[6], 'switch_type', 0, 2)
+
+        # Turn on ECNP mode at core
+        modifyRegister(switches[6], 'ecnp_mode', 0, 1)
+
         # Print the tunnel counters every 2 seconds
 #        while True:
 #            sleep(2)

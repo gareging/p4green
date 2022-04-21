@@ -112,7 +112,8 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
-    register<bit<3>>(1) switch_type; 
+    register<bit<2>>(1) switch_type;
+    register<bit<1>>(1) ecnp_mode; 
 
     action drop() {
         mark_to_drop(standard_metadata);
@@ -128,7 +129,7 @@ control MyIngress(inout headers hdr,
        standard_metadata.mcast_grp = 1;
     }
 
-    action ecnp(bit<3> type){
+    action ecnp(bit<2> type){
 	bit<16> base;
 	if (type == CORE_SWITCH){
 	    base = 1;
@@ -173,21 +174,27 @@ control MyIngress(inout headers hdr,
     }
 
     apply {
-//	if (hdr.arp.isValid() && hdr.arp.opcode == 1){
 	if (hdr.arp.isValid()){
-	     //broadcast();
 	     send_back();	
 	}
         else if (hdr.ipv4.isValid()) {
-	    bit<3> type;
-	    switch_type.read(type, 0);
-		if (type == ACCESS_SWITCH || type == AGGREG_SWITCH || (type == CORE_SWITCH && standard_metadata.ingress_port != 3)){	
+	    bit<2> type;
+            switch_type.read(type, 0);
+
+	    if (type == AGGREG_SWITCH) {
 		ipv4_lpm.apply();
 	    }
-            else if (type == CORE_SWITCH){
-                ecnp(type);
-            }
-		
+	    else {
+		bit<1> ecnp_md;	
+		ecnp_mode.read(ecnp_md, 0);
+		if (type == CORE_SWITCH && ecnp_md == 1 && standard_metadata.ingress_port == 3){
+		    ecnp(type);
+		}
+                else
+		{
+		    ipv4_lpm.apply();
+		}
+	   }
         }
     }
 }
