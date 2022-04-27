@@ -13,7 +13,8 @@ const bit<16> TYPE_IPV4 = 0x800;
 #define ACCESS_SWITCH 0
 #define AGGREG_SWITCH 1
 #define CORE_SWITCH 2
-
+#define AGGREG_NUM 3
+#define HOST_NUM 2
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
@@ -160,23 +161,23 @@ control MyIngress(inout headers hdr,
             switch_type.read(type, 0);
 	    ecnp_mode.read(ecnp_md, 0);
 
-	    if (ecnp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == 3) {
+	    if (ecnp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == AGGREG_NUM+1) {
 		    hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)1,
 			{ hdr.ipv4.srcAddr,
 			  hdr.ipv4.dstAddr,
 			  hdr.ipv4.protocol
-			}, (bit<32>)2);
+			}, (bit<32>)AGGREG_NUM);
 	    }
 	    else{
 		ipv4_lpm.apply();
 
 		if (ecnp_md == 1 && type == ACCESS_SWITCH) {
-		    if (standard_metadata.egress_spec > 2) {
-			hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)3,
+		    if (standard_metadata.egress_spec > HOST_NUM) {
+			hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)(HOST_NUM+1),
 			    { hdr.ipv4.srcAddr,
 				hdr.ipv4.dstAddr,
 				hdr.ipv4.protocol
-			    }, (bit<32>)2);
+			    }, (bit<32>)AGGREG_NUM);
 		    }
 		}
 	    }

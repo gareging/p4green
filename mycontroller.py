@@ -212,15 +212,15 @@ def main(p4info_file_path, bmv2_file_path):
                         writeForwardingRule(p4info_helper, sw=s, ip_address=h.mask_ip(), mask=h.mask, mac_address="08:00:00:00:02:22", port=nhop[s][h][0])
 
         addMulticastingGroup(p4info_helper, switches, links)
-        for i in range(4, 6):
-            # Change switch type to aggr for 4,5
+        for i in range(4, 7):
+            # Change switch type to aggr for 4,5,6
             modifyRegister(switches[i], 'switch_type', 0, 1)
 
         # change core switch type
-        modifyRegister(switches[6], 'switch_type', 0, 2)
+        modifyRegister(switches[7], 'switch_type', 0, 2)
 
         # Turn on ECNP mode at core
-        modifyRegister(switches[6], 'ecnp_mode', 0, 1)
+        modifyRegister(switches[7], 'ecnp_mode', 0, 1)
 
         # Print the tunnel counters every 2 seconds
         while True:
