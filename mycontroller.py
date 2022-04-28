@@ -20,6 +20,12 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 
 SWITCH_TO_HOST_PORT = 1
 SWITCH_TO_SWITCH_PORT = 2
+HOST_SWITCHES = 4
+AGGREG_SWITCHES = 3
+CORE_SWITCHES = 1
+ACCESS_SWITCH_TYPE = 0
+AGGREG_SWITCH_TYPE = 1
+CORE_SWITCH_TYPE = 2
 
 def ecnpModeControlCLI(switches):
    print('ECNP control menu')
@@ -104,13 +110,23 @@ def printCounter(p4info_helper, sw, counter_name, index):
     :param counter_name: the name of the counter from the P4 program
     :param index: the counter index (in our case, the tunnel ID)
     """
+    i = 0
     for response in sw.ReadCounters(p4info_helper.get_counters_id(counter_name), index):
         for entity in response.entities:
             counter = entity.counter_entry
-            print("%s %s %d: %d packets (%d bytes)" % (
+            print("%i %s %s %d: %d packets (%d bytes)" % (i,
                 sw.name, counter_name, index,
                 counter.data.packet_count, counter.data.byte_count
             ))
+            i += 1
+
+def getCounterValues(p4info_helper, sw, counter_name, index):
+    for response in sw.ReadCounters(p4info_helper.get_counters_id(counter_name), index):
+        for entity in response.entities:
+            counter = entity.counter_entry
+            return counter.data.packet_count, counter.data.byte_count
+
+
 
 def main(p4info_file_path, bmv2_file_path):
     # Instantiate a P4Runtime helper from the p4info file
@@ -212,22 +228,42 @@ def main(p4info_file_path, bmv2_file_path):
                         writeForwardingRule(p4info_helper, sw=s, ip_address=h.mask_ip(), mask=h.mask, mac_address="08:00:00:00:02:22", port=nhop[s][h][0])
 
         addMulticastingGroup(p4info_helper, switches, links)
-        for i in range(4, 7):
+        aggreg_switch_start_id = HOST_SWITCHES
+        aggreg_switch_end_id = aggreg_switch_start_id + AGGREG_SWITCHES - 1
+        core_switch_id = HOST_SWITCHES + AGGREG_SWITCHES
+        for i in range(aggreg_switch_start_id, aggreg_switch_end_id+1):
             # Change switch type to aggr for 4,5,6
-            modifyRegister(switches[i], 'switch_type', 0, 1)
+            modifyRegister(switches[i], 'switch_type', 0, AGGREG_SWITCH_TYPE)
 
         # change core switch type
-        modifyRegister(switches[7], 'switch_type', 0, 2)
+        modifyRegister(switches[core_switch_id], 'switch_type', 0, CORE_SWITCH_TYPE)
 
         # Turn on ECNP mode at core
-        modifyRegister(switches[7], 'ecnp_mode', 0, 1)
+        #modifyRegister(switches[core_switch_id], 'ecnp_mode', 0, 1)
 
         # Print the tunnel counters every 2 seconds
+        counter_previous = [(0, 0) for i in range(len(switches))]
+        ecnp_mode = [0 for i in range(len(switches))]
         while True:
-             ecnpModeControlCLI(switches)
-#            sleep(2)
+             print('-----------------------------------')
+             #ecnpModeControlCLI(switches)
+             sleep(2)
+             for i in range(len(switches)):
+                 counter_values = getCounterValues(p4info_helper, switches[i], "MyIngress.my_pkt_counts", 0)
+                 new_data = (counter_values[0]-counter_previous[i][0], counter_values[1]-counter_previous[i][1])
+                 print(f'New packets for s{i+1}: {new_data[0]} Bytes: {new_data[1]}')
+                 counter_previous[i] = counter_values
+                 if i < HOST_SWITCHES or i >= HOST_SWITCHES + AGGREG_SWITCHES:
+                     if new_data[1] < 500 and ecnp_mode[i] == 1:
+                          print(f'Turning off ECNP mode at switch{i+1}')
+                          modifyRegister(switches[i], 'ecnp_mode', 0, 0)
+                          ecnp_mode[i]=0
+                     elif new_data[1] >= 500 and ecnp_mode[i] == 0:
+                          print(f'Turning on ECNP mode at switch{i+1}')
+                          modifyRegister(switches[i], 'ecnp_mode', 0, 1)
+                          ecnp_mode[i]=1
 #            print('\n----- Reading tunnel counters -----')
-#            printCounter(p4info_helper, s1, "MyIngress.ingressTunnelCounter", 100)
+             #printCounter(p4info_helper, switches[0], "MyIngress.my_pkt_counts", 0)
 #            printCounter(p4info_helper, s2, "MyIngress.egressTunnelCounter", 100)
 #            printCounter(p4info_helper, s2, "MyIngress.ingressTunnelCounter", 200)
 #            printCounter(p4info_helper, s1, "MyIngress.egressTunnelCounter", 200)

@@ -116,7 +116,10 @@ control MyIngress(inout headers hdr,
                   inout standard_metadata_t standard_metadata) {
 
     register<bit<2>>(1) switch_type;
-    register<bit<1>>(1) ecnp_mode; 
+    register<bit<1>>(1) ecnp_mode;
+    register<bit<32>>(1) meter_data;
+    direct_meter<bit<32>>(MeterType.packets) my_meter;
+    counter(1, CounterType.packets) my_pkt_counts;
 
     action drop() {
         mark_to_drop(standard_metadata);
@@ -149,6 +152,7 @@ control MyIngress(inout headers hdr,
             NoAction;
         }
         size = 1024;
+	meters = my_meter;
     }
 
     apply {
@@ -160,7 +164,7 @@ control MyIngress(inout headers hdr,
             bit<1> ecnp_md;	
             switch_type.read(type, 0);
 	    ecnp_mode.read(ecnp_md, 0);
-
+            my_pkt_counts.count((bit<32>) 0);
 	    if (ecnp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == AGGREG_NUM+1) {
 		    hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)1,
 			{ hdr.ipv4.srcAddr,
@@ -181,6 +185,9 @@ control MyIngress(inout headers hdr,
 		    }
 		}
 	    }
+	    bit<32> meter_data_value;
+	    my_meter.read(meter_data_value);
+	    meter_data.write(0, meter_data_value);
         }
 	//standard_metadata.egress_spec = meta.egress_candidate;
     }
@@ -192,8 +199,12 @@ control MyIngress(inout headers hdr,
 
 control MyEgress(inout headers hdr,
                  inout metadata meta,
-                 inout standard_metadata_t standard_metadata) {
-    apply {  }
+    inout standard_metadata_t standard_metadata) {
+
+
+    apply {
+
+    }
 }
 
 /*************************************************************************
