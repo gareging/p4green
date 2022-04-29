@@ -176,11 +176,11 @@ def main(p4info_file_path, bmv2_file_path):
 
            #######START ECNP ONLY SWITCH##########
            # exclude s6 as an ecnp-only switch
-           if obj1.name == 's6':
+           if obj1.name in ('s6','s7'):
               add_link(links, obj1, obj2, srcport, dstport)
               continue
 
-           if obj2.name == 's6':
+           if obj2.name in ('s6','s7'):
               add_link(links, obj2, obj1, dstport, srcport)
               continue
            #######END ECNP ONLY SWITCH##########
@@ -244,6 +244,11 @@ def main(p4info_file_path, bmv2_file_path):
         # Print the tunnel counters every 2 seconds
         counter_previous = [(0, 0) for i in range(len(switches))]
         ecnp_mode = [0 for i in range(len(switches))]
+        ecnp_width = [AGGREG_SWITCHES for i in range(len(switches))]
+        for i in range(len(switches)):
+            modifyRegister(switches[i], 'ecnp_width', 0, 2)
+
+
         while True:
              print('-----------------------------------')
              #ecnpModeControlCLI(switches)
@@ -251,17 +256,32 @@ def main(p4info_file_path, bmv2_file_path):
              for i in range(len(switches)):
                  counter_values = getCounterValues(p4info_helper, switches[i], "MyIngress.my_pkt_counts", 0)
                  new_data = (counter_values[0]-counter_previous[i][0], counter_values[1]-counter_previous[i][1])
-                 print(f'New packets for s{i+1}: {new_data[0]} Bytes: {new_data[1]}')
+                 print(f'New packets for s{i+1}: {new_data[0]} Bytes: {new_data[1]} ECNP width: {ecnp_width[i]} ECNP mode: {ecnp_mode[i]}')
                  counter_previous[i] = counter_values
                  if i < HOST_SWITCHES or i >= HOST_SWITCHES + AGGREG_SWITCHES:
                      if new_data[1] < 500 and ecnp_mode[i] == 1:
                           print(f'Turning off ECNP mode at switch{i+1}')
                           modifyRegister(switches[i], 'ecnp_mode', 0, 0)
                           ecnp_mode[i]=0
-                     elif new_data[1] >= 500 and ecnp_mode[i] == 0:
-                          print(f'Turning on ECNP mode at switch{i+1}')
-                          modifyRegister(switches[i], 'ecnp_mode', 0, 1)
-                          ecnp_mode[i]=1
+                     elif new_data[1] >= 500 and new_data[1] < 1000:
+                          if ecnp_mode[i] == 0:
+                              print(f'Turning on ECNP mode at switch{i+1}')
+                              modifyRegister(switches[i], 'ecnp_mode', 0, 1)
+                              ecnp_mode[i]=1
+                          if ecnp_width[i] != 2:
+                              print(f'Changing ECNP width to 2 at switch{i+1}')
+                              modifyRegister(switches[i], 'ecnp_width', 0, 2)
+                              ecnp_width[i]=2
+                     elif new_data[1] >= 1000:
+                          if ecnp_mode[i] == 0:
+                              print(f'Turning on ECNP mode at switch{i+1}')
+                              modifyRegister(switches[i], 'ecnp_mode', 0, 1)
+                              ecnp_mode[i]=1
+                          if ecnp_width[i] != 3:
+                              print(f'Changing ECNP width to 3 at switch{i+1}')
+                              modifyRegister(switches[i], 'ecnp_width', 0, 3)
+                              ecnp_width[i]=3
+
 #            print('\n----- Reading tunnel counters -----')
              #printCounter(p4info_helper, switches[0], "MyIngress.my_pkt_counts", 0)
 #            printCounter(p4info_helper, s2, "MyIngress.egressTunnelCounter", 100)
