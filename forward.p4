@@ -56,7 +56,7 @@ header ipv4_t {
 struct metadata {
     /* empty */
     bit<9> egress_candidate;
-    bit<9> ecnp_candidate;
+    bit<9> ecmp_candidate;
 }
 
 struct headers {
@@ -116,9 +116,9 @@ control MyIngress(inout headers hdr,
                   inout standard_metadata_t standard_metadata) {
 
     register<bit<2>>(1) switch_type;
-    register<bit<1>>(1) ecnp_mode;
+    register<bit<1>>(1) ecmp_mode;
     register<bit<32>>(1) meter_data;
-    register<bit<32>>(1) ecnp_width;
+    register<bit<32>>(1) ecmp_width;
     direct_meter<bit<32>>(MeterType.packets) my_meter;
     counter(1, CounterType.packets) my_pkt_counts;
 
@@ -162,16 +162,16 @@ control MyIngress(inout headers hdr,
 	}
         else if (hdr.ipv4.isValid()) {
 	    bit<2> type;
-            bit<1> ecnp_md;
+            bit<1> ecmp_md;
 	    bit<32> aggreg_num;
 
 	    
             switch_type.read(type, 0);
-	    ecnp_mode.read(ecnp_md, 0);
-	    ecnp_width.read(aggreg_num, 0);
+	    ecmp_mode.read(ecmp_md, 0);
+	    ecmp_width.read(aggreg_num, 0);
 	    
             my_pkt_counts.count((bit<32>) 0);
-	    if (ecnp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == AGGREG_NUM+1) {
+	    if (ecmp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == AGGREG_NUM+1) {
 		    hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)1,
 			{ hdr.ipv4.srcAddr,
 			  hdr.ipv4.dstAddr,
@@ -181,7 +181,7 @@ control MyIngress(inout headers hdr,
 	    else{
 		ipv4_lpm.apply();
 
-		if (ecnp_md == 1 && type == ACCESS_SWITCH) {
+		if (ecmp_md == 1 && type == ACCESS_SWITCH) {
 		    if (standard_metadata.egress_spec > HOST_NUM) {
 			hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)(HOST_NUM+1),
 			    { hdr.ipv4.srcAddr,
