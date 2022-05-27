@@ -50,24 +50,6 @@ def addMulticastingGroup(p4_info_helper, switches, links):
         print('Done writing PRE entry')
 
 def writeForwardingRule(p4info_helper, sw, ip_address, mask, mac_address, port):
-    """
-    Installs three rules:
-    1) An tunnel ingress rule on the ingress switch in the ipv4_lpm table that
-       encapsulates traffic into a tunnel with the specified ID
-    2) A transit rule on the ingress switch that forwards traffic based on
-       the specified ID
-    3) An tunnel egress rule on the egress switch that decapsulates traffic
-       with the specified ID and sends it to the host
-
-    :param p4info_helper: the P4Info helper
-    :param ingress_sw: the ingress switch connection
-    :param egress_sw: the egress switch connection
-    :param tunnel_id: the specified tunnel ID
-    :param dst_eth_addr: the destination IP to match in the ingress rule
-    :param dst_ip_addr: the destination Ethernet address to write in the
-                        egress rule
-    """
-    # 1) Tunnel Ingress Rule
     table_entry = p4info_helper.buildTableEntry(
         table_name="MyIngress.ipv4_lpm",
         match_fields={
@@ -80,6 +62,20 @@ def writeForwardingRule(p4info_helper, sw, ip_address, mask, mac_address, port):
         })
     sw.WriteTableEntry(table_entry)
     print("Installed ingress forwarding rule on %s" % sw.name)
+
+def writeSendToHostRule(p4info_helper, sw, host_id, mac_address, port):
+    table_entry = p4info_helper.buildTableEntry(
+        table_name="MyIngress.hosts",
+        match_fields={
+            "meta.host_id": host_id
+        },
+        action_name="MyIngress.send_to_host",
+        action_params={
+            "dstAddr": mac_address,
+            "port": port
+        })
+    sw.WriteTableEntry(table_entry)
+    print("Installed send_to_host rule on %s" % sw.name)
 
 
 def readTableRules(p4info_helper, sw):
@@ -216,11 +212,14 @@ def main(p4info_file_path, bmv2_file_path):
             print(f'Installed P4 Program using SetForwardingPipelineConfig on s{i}')
             i += 1
             rules_installed = set()
+            adjacent_host_count = 1
             for h in nhop[s]:
                 # if it is a "one hop" path (i.e. it's an access switch for the host)
                 if nhop[s][h][1]:
                     print(f'Installing on {s.name}: ip {h.ip} mask 32 mac_address {h.mac} port {nhop[s][h][0]}')
                     writeForwardingRule(p4info_helper, sw=s, ip_address=h.ip, mask=32, mac_address=h.mac, port=nhop[s][h][0])
+                    writeSendToHostRule(p4info_helper, sw=s, host_id=adjacent_host_count, mac_address=h.mac, port=nhop[s][h][0])
+                    adjacent_host_count += 1
                 else:
                     if (h.mask_ip(), h.mask) not in rules_installed:
                         rules_installed.add((h.mask_ip(), h.mask))
