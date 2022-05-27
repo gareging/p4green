@@ -300,6 +300,7 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
+    register<bit<8>>(2) load_counter;
     register<bit<2>>(1) switch_type;
     register<bit<1>>(1) ecmp_mode;
     register<bit<32>>(1) meter_data;
@@ -314,6 +315,10 @@ control MyIngress(inout headers hdr,
     }
 
     action send_to_host(macAddr_t dstAddr, egressSpec_t port) {
+        bit<8> current;
+	/*TO ADD: Increase counter only when TCP SYN*/
+	load_counter.read(current, (bit<32>)port-1);
+	load_counter.write((bit<32>)port-1, current+1);
 	standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = dstAddr;
@@ -398,6 +403,7 @@ control MyIngress(inout headers hdr,
 			    }, aggreg_num);
 		    }
 		    else {
+		      /* TOADD: Check if TCP SYN/RESET or Regular. If regular, check timestamp echo. If Syn/reset, select host first*/
                       hosts.apply();
 		    }
 		}
