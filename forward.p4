@@ -61,7 +61,12 @@ header tcp_t {
     bit<4>  dataOffset;
     bit<3>  res;
     bit<3>  ecn;
-    bit<6>  ctrl;
+    bit<1>  urg;
+    bit<1>  ack;
+    bit<1>  psh;
+    bit<1>  rst;
+    bit<1>  syn;
+    bit<1>  fin;
     bit<16> window;
     bit<16> checksum;
     bit<16> urgentPtr;
@@ -73,8 +78,12 @@ header Tcp_option_end_h {
 header Tcp_option_nop_h {
     bit<8> kind;
 }
+header Tcp_option_sz_h {
+    bit<8> length;
+}
 header Tcp_option_ss_h {
     bit<8>  kind;
+    bit<8> length;
     bit<32> maxSegmentSize;
 }
 header Tcp_option_s_h {
@@ -90,10 +99,33 @@ header Tcp_option_sack_h {
 header Tcp_option_timestamp_h {
     bit<8>         kind;
     bit<8>         length;
+    bit<32> tsval;
+    bit<32> tsecr;
+    /*
     bit<16>        tsval_msb;
     bit<16>        tsval_lsb;
     bit<16>        tsecr_msb;
     bit<16>        tsecr_lsb;
+    */
+}
+
+//Versions without the kind for hop by hop
+header Tcp_option_ss_e {
+    bit<8> length;
+    bit<16> maxSegmentSize;
+}
+
+header Tcp_option_sack_e {
+    varbit<256>    sack;
+}
+header Tcp_option_timestamp_e {
+    bit<8>         length;
+    bit<32> tsval;
+    bit<32> tsecr;
+    //bit<16>        tsval_msb;
+    //bit<16>        tsval_lsb;
+    //bit<16>        tsecr_msb;
+    //bit<16>        tsecr_lsb;
 }
 
 header_union Tcp_option_h {
@@ -136,8 +168,17 @@ struct headers {
     arp_t        arp;
     ipv4_t       ipv4;
     tcp_t            tcp;
-    Tcp_option_stack tcp_options_vec;
-    Tcp_option_padding_h tcp_options_padding;
+    //Tcp_option_stack tcp_options_vec;
+    //Tcp_option_padding_h tcp_options_padding;
+    Tcp_option_nop_h nop1;
+    Tcp_option_nop_h nop2;
+    //Linux MSS SACK TS
+    Tcp_option_ss_e ss;
+    Tcp_option_nop_h nop3;
+    Tcp_option_sz_h sackw;
+    Tcp_option_sack_e sack;
+    Tcp_option_nop_h nop4;
+    Tcp_option_timestamp_e timestamp;
 }
 
 /*************************************************************************
@@ -275,11 +316,60 @@ parser MyParser(packet_in packet,
 
     state parse_tcp {
         packet.extract(hdr.tcp);
-        Tcp_option_parser.apply(packet, hdr.tcp.dataOffset,
-                                hdr.tcp_options_vec, hdr.tcp_options_padding);
-        transition accept;
+        //Tcp_option_parser.apply(packet, hdr.tcp.dataOffset,
+        //                        hdr.tcp_options_vec, hdr.tcp_options_padding);
+        packet.extract(hdr.nop1);
+        transition select(hdr.nop1.kind){
+		1: parse_nop;
+            2: parse_ss;
+            4: parse_sack;
+            8: parse_ts;
+		default: accept;
+	}
     }	
-    
+
+    state parse_nop {
+        packet.extract(hdr.nop2);
+         transition select(hdr.nop2.kind){
+            1: parse_nop2;
+            8: parse_ts;
+		default: accept;
+	}
+    }
+    state parse_nop2 {
+        packet.extract(hdr.nop3);
+         transition select(hdr.nop3.kind){
+            8: parse_ts;
+		default: accept;
+	}
+    }
+    state parse_ss {
+        //Finish parsing SS
+        packet.extract(hdr.ss);
+        packet.extract(hdr.nop3);
+        transition select(hdr.nop3.kind){
+            4: parse_sack;
+            8: parse_ts;
+		default: accept;
+	}
+    }
+
+    state parse_sack {
+        //Finish parsing sack
+        packet.extract(hdr.sackw);
+        packet.extract(hdr.sack, (bit<32>)hdr.sackw.length - 2);
+        packet.extract(hdr.nop4);
+        transition select(hdr.nop4.kind){
+            8: parse_ts;
+		default: accept;
+	}
+    }
+
+    state parse_ts {
+        //Finish parsing ts
+        packet.extract(hdr.timestamp);
+        transition accept;
+    }
 
 }
 
@@ -301,6 +391,7 @@ control MyIngress(inout headers hdr,
                   inout standard_metadata_t standard_metadata) {
 
     register<bit<8>>(2) load_counter;
+    register<bit<8>>(1) max_load;
     register<bit<2>>(1) switch_type;
     register<bit<1>>(1) ecmp_mode;
     register<bit<32>>(1) meter_data;
@@ -310,19 +401,50 @@ control MyIngress(inout headers hdr,
     direct_meter<bit<32>>(MeterType.packets) my_meter;
     counter(1, CounterType.packets) my_pkt_counts;
 
+    register<bit<32>>(1) vip_ip;
+
+
+    // Incremental checksum fix adapted from the pseudocode at https://p4.org/p4-spec/docs/PSA-v1.1.0.html#appendix-internetchecksum-implementation
+    action ones_complement_sum(in bit<16> x, in bit<16> y, out bit<16> sum) {
+	bit<17> ret = (bit<17>) x + (bit<17>) y;
+	if (ret[16:16] == 1) {
+            ret = ret + 1;
+	}
+	sum = ret[15:0];
+    }
+
+    // Restriction: data is a multiple of 16 bits long
+    action subtract(inout bit<16> sum, bit<16> d) {
+        ones_complement_sum(sum, ~d, sum);
+    }
+
+    action subtract32(inout bit<16> sum, bit<32> d) {
+        ones_complement_sum(sum, ~(bit<16>)d[15:0], sum);
+        ones_complement_sum(sum, ~(bit<16>)d[31:16], sum);
+    }
+
+    action add(inout bit<16> sum, bit<16> d) {
+        ones_complement_sum(sum, d, sum);
+    }
+
+    action add32(inout bit<16> sum, bit<32> d) {
+        ones_complement_sum(sum, (bit<16>)(d[15:0]), sum);
+        ones_complement_sum(sum, (bit<16>)(d[31:16]), sum);
+    }
+
+
+    
     action drop() {
         mark_to_drop(standard_metadata);
     }
 
-    action send_to_host(macAddr_t dstAddr, egressSpec_t port) {
-        bit<8> current;
-	/*TO ADD: Increase counter only when TCP SYN*/
-	load_counter.read(current, (bit<32>)port-1);
-	load_counter.write((bit<32>)port-1, current+1);
+    action send_to_host(macAddr_t dstAddr, egressSpec_t port, ip4Addr_t dstIPAddr) {
 	standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = dstAddr;
-        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 10;
+	hdr.ipv4.dstAddr = dstIPAddr;
+	//hdr.timestamp.tsval = 0;
     }
 
     action send_back(){
@@ -331,11 +453,11 @@ control MyIngress(inout headers hdr,
 	standard_metadata.egress_spec = standard_metadata.ingress_port;
 	//meta.egress_candidate = standard_metadata.ingress_port;
     }
-
+/*
     action broadcast(){
        standard_metadata.mcast_grp = 1;
     }
-
+*/
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
@@ -375,15 +497,16 @@ control MyIngress(inout headers hdr,
             bit<1> ecmp_md;
 	    bit<32> aggreg_num;
 
-
+            /*
 	    deq_qdepth.write(0, standard_metadata.deq_qdepth);
 	    enq_qdepth.write(0, standard_metadata.enq_qdepth);
-	    
+	    */
             switch_type.read(type, 0);
 	    ecmp_mode.read(ecmp_md, 0);
 	    ecmp_width.read(aggreg_num, 0);
 	    
-            my_pkt_counts.count((bit<32>) 0);
+            my_pkt_counts.count((bit<32>) 0)
+	    ;
 	    if (ecmp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == AGGREG_NUM+1) {
 		    hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)1,
 			{ hdr.ipv4.srcAddr,
@@ -396,17 +519,78 @@ control MyIngress(inout headers hdr,
 
 		if (ecmp_md == 1 && type == ACCESS_SWITCH) {
 		    if (standard_metadata.egress_spec > HOST_NUM) {
+			// outgoing packet: ecmp on
 			hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)(HOST_NUM+1),
 			    { hdr.ipv4.srcAddr,
 				hdr.ipv4.dstAddr,
 				hdr.ipv4.protocol
 			    }, aggreg_num);
 		    }
-		    else {
-		      /* TOADD: Check if TCP SYN/RESET or Regular. If regular, check timestamp echo. If Syn/reset, select host first*/
-                      hosts.apply();
+		}
+
+		if (type == ACCESS_SWITCH && hdr.tcp.isValid()){
+		    bit<32> vip;
+		    vip_ip.read(vip, 0);
+		    if(hdr.ipv4.dstAddr==vip){
+			if(hdr.tcp.syn == 0 && hdr.timestamp.isValid()){
+			    //existing incoming connection
+			    meta.host_id = (bit<4>)hdr.timestamp.tsecr;
+		            if (hdr.tcp.rst == 1){
+				// reset: decrease the counter load
+				 bit<8> current;
+				 load_counter.read(current, (bit<32>)standard_metadata.egress_spec-1);
+                                 load_counter.write((bit<32>)standard_metadata.egress_spec-1, current-1);
+			    }
+			    bit<16> sum = 0;
+			}
+			else if (hdr.tcp.syn == 1){
+			    // new connection
+			    bit<8> load1;
+			    bit<8> load2;
+			    load_counter.read(load1, 0);
+			    load_counter.read(load2, 1);
+			    bit<8> max_load_value;
+			    max_load.read(max_load_value, 0);
+
+			    if (load1 < max_load_value || load1 <= load2){
+				meta.host_id = 1;
+			    }
+			    else{
+				meta.host_id = 2;
+			    }
+			}
+			bit<16> sum = 0;
+			subtract(sum, hdr.tcp.checksum);
+                        subtract32(sum, hdr.ipv4.dstAddr);			    
+			hosts.apply();
+			add32(sum, hdr.ipv4.dstAddr);
+			hdr.tcp.checksum = ~sum;    
+		    }
+		    else if (standard_metadata.ingress_port <= HOST_NUM && hdr.tcp.isValid()){
+			// outgoing packet from server to client
+			bit<16> sum = 0;
+			subtract(sum, hdr.tcp.checksum);
+                        subtract32(sum, hdr.ipv4.srcAddr);
+		        subtract32(sum, hdr.timestamp.tsval);
+			hdr.ipv4.srcAddr = vip;
+			hdr.timestamp.tsval = (bit<32>)standard_metadata.ingress_port;
+                        add32(sum, hdr.ipv4.srcAddr);
+			add32(sum, hdr.timestamp.tsval);
+			hdr.tcp.checksum = ~sum;
+			
+			bit<8> current;
+			if (hdr.tcp.rst == 1 || hdr.tcp.fin == 1){
+				// reset: decrease the counter load
+				 load_counter.read(current, hdr.timestamp.tsval-1);
+                                 load_counter.write(hdr.timestamp.tsval-1, current-1);
+			}
+			else if (hdr.tcp.syn == 1 && hdr.tcp.ack == 1){
+                            load_counter.read(current, hdr.timestamp.tsval-1);
+			    load_counter.write(hdr.timestamp.tsval-1, current+1);
+			}
 		    }
 		}
+		
 	    }
 	    bit<32> meter_data_value;
 	    my_meter.read(meter_data_value);
@@ -464,8 +648,14 @@ control MyDeparser(packet_out packet, in headers hdr) {
         packet.emit(hdr.arp);
         packet.emit(hdr.ipv4);
         packet.emit(hdr.tcp);
-        packet.emit(hdr.tcp_options_vec);
-        packet.emit(hdr.tcp_options_padding);
+        packet.emit(hdr.nop1);
+        packet.emit(hdr.nop2);
+        packet.emit(hdr.ss);
+        packet.emit(hdr.nop3);
+        packet.emit(hdr.sackw);
+        packet.emit(hdr.sack);
+        packet.emit(hdr.nop4);
+        packet.emit(hdr.timestamp);
     }
 }
 
