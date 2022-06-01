@@ -526,15 +526,16 @@ control MyIngress(inout headers hdr,
 				hdr.ipv4.protocol
 			    }, aggreg_num);
 		    }
-		}
+	    }
 
-		if (type == ACCESS_SWITCH && hdr.tcp.isValid()){
-		    bit<32> vip;
-		    vip_ip.read(vip, 0);
-		    if(hdr.ipv4.dstAddr==vip){
-			if(hdr.tcp.syn == 0 && hdr.timestamp.isValid()){
+	   if (type == ACCESS_SWITCH && hdr.tcp.isValid()){
+	       bit<32> vip;
+	       vip_ip.read(vip, 0);
+	       if(hdr.ipv4.dstAddr==vip){
+	          if(hdr.tcp.syn == 0 && hdr.timestamp.isValid()){
 			    //existing incoming connection
-			    meta.host_id = (bit<4>)hdr.timestamp.tsecr;
+			    meta.host_id = (bit<4>)((bit<32>)hdr.timestamp.tsecr & (bit<32>)15);
+			    //meta.host_id = (bit<4>)hdr.timestamp.tsecr;
 		            if (hdr.tcp.rst == 1){
 				// reset: decrease the counter load
 				 bit<8> current;
@@ -543,7 +544,7 @@ control MyIngress(inout headers hdr,
 			    }
 			    bit<16> sum = 0;
 			}
-			else if (hdr.tcp.syn == 1){
+		 else if (hdr.tcp.syn == 1){
 			    // new connection
 			    bit<8> load1;
 			    bit<8> load2;
@@ -565,15 +566,16 @@ control MyIngress(inout headers hdr,
 			hosts.apply();
 			add32(sum, hdr.ipv4.dstAddr);
 			hdr.tcp.checksum = ~sum;    
-		    }
-		    else if (standard_metadata.ingress_port <= HOST_NUM && hdr.tcp.isValid()){
+		}
+	        else if (standard_metadata.ingress_port <= HOST_NUM && hdr.tcp.isValid()){
 			// outgoing packet from server to client
 			bit<16> sum = 0;
 			subtract(sum, hdr.tcp.checksum);
                         subtract32(sum, hdr.ipv4.srcAddr);
 		        subtract32(sum, hdr.timestamp.tsval);
 			hdr.ipv4.srcAddr = vip;
-			hdr.timestamp.tsval = (bit<32>)standard_metadata.ingress_port;
+			hdr.timestamp.tsval = (bit<32>)(hdr.timestamp.tsval & 4294967280) + (bit<32>)standard_metadata.ingress_port;
+			//hdr.timestamp.tsval = (bit<32>)standard_metadata.ingress_port;
                         add32(sum, hdr.ipv4.srcAddr);
 			add32(sum, hdr.timestamp.tsval);
 			hdr.tcp.checksum = ~sum;
@@ -581,12 +583,12 @@ control MyIngress(inout headers hdr,
 			bit<8> current;
 			if (hdr.tcp.rst == 1 || hdr.tcp.fin == 1){
 				// reset: decrease the counter load
-				 load_counter.read(current, hdr.timestamp.tsval-1);
-                                 load_counter.write(hdr.timestamp.tsval-1, current-1);
+				 load_counter.read(current, (bit<32>)standard_metadata.ingress_port-1);
+                                 load_counter.write((bit<32>)standard_metadata.ingress_port-1, current-1);
 			}
 			else if (hdr.tcp.syn == 1 && hdr.tcp.ack == 1){
-                            load_counter.read(current, hdr.timestamp.tsval-1);
-			    load_counter.write(hdr.timestamp.tsval-1, current+1);
+                            load_counter.read(current, (bit<32>)standard_metadata.ingress_port-1);
+			    load_counter.write((bit<32>)standard_metadata.ingress_port-1, current+1);
 			}
 		    }
 		}
