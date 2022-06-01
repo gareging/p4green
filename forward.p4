@@ -3,7 +3,8 @@
 #include <v1model.p4>
 
 const bit<16> TYPE_IPV4 = 0x800;
-
+// green info packets
+const bit<8> TYPE_GREEN_INFO = 0x8F;
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -491,6 +492,13 @@ control MyIngress(inout headers hdr,
     apply {
 	if (hdr.arp.isValid()){
 	     send_back();	
+	}
+	else if (hdr.ipv4.isValid() && hdr.ipv4.protocol == TYPE_GREEN_INFO){
+	      bit<8> value;
+	      bit<32> index;
+              index = (bit<32>)standard_metadata.ingress_port - (bit<32>)1;
+	      value = (bit<8>)((bit<32>)hdr.ipv4.dstAddr & (bit<32>)255);
+	      load_counter.write(index, value);
 	}
         else if (hdr.ipv4.isValid()) {
 	    bit<2> type;
