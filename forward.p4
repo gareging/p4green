@@ -401,9 +401,14 @@ control MyIngress(inout headers hdr,
     register<bit<19>>(1) enq_qdepth;
     direct_meter<bit<32>>(MeterType.packets) my_meter;
     counter(1, CounterType.packets) my_pkt_counts;
-
+    register<bit<48>>(1) epoch_start;
+    register<bit<48>>(1) epoch_length;
+    register<bit<32>>(1) packet_threshold1;
+    register<bit<32>>(1) packet_threshold2;
+    register<bit<32>>(1) packet_threshold3;
+    register<bit<32>>(1) packet_counter;
     register<bit<32>>(1) vip_ip;
-
+    register<bit<48>>(1) timestamp_log;
 
     // Incremental checksum fix adapted from the pseudocode at https://p4.org/p4-spec/docs/PSA-v1.1.0.html#appendix-internetchecksum-implementation
     action ones_complement_sum(in bit<16> x, in bit<16> y, out bit<16> sum) {
@@ -504,6 +509,42 @@ control MyIngress(inout headers hdr,
 	    bit<2> type;
             bit<1> ecmp_md;
 	    bit<32> aggreg_num;
+	    bit<48> epoch_st;
+	    bit<48> epoch_ln;
+	    bit<32> packet_th1;
+	    bit<32> packet_th2;
+	    bit<32> packet_th3;
+	    bit<32> packet_cn;
+
+	    bit<48> timestamp = standard_metadata.ingress_global_timestamp;
+            timestamp_log.write(0, timestamp);
+	    
+	    epoch_start.read(epoch_st, 0);
+	    epoch_length.read(epoch_ln, 0);
+	    packet_threshold1.read(packet_th1, 0);
+	    packet_threshold2.read(packet_th2, 0);
+	    packet_threshold3.read(packet_th3, 0);
+	    packet_counter.read(packet_cn, 0);
+	    packet_counter.write(0, packet_cn+1);
+
+	    aggreg_num = 1;
+	    
+	    if (timestamp > epoch_st + epoch_ln){
+                if (packet_cn > packet_th3){
+                    ecmp_width.write(0, 3);
+		    //aggreg_num = 3;
+		}
+		else if (packet_cn > packet_th2){
+		    ecmp_width.write(0, 2);
+		    //aggreg_num = 2;
+		}
+		else{
+                    ecmp_width.write(0, 1);		    
+		    //aggreg_num = 1;
+		}
+		epoch_start.write(0, timestamp);
+		packet_counter.write(0, 0);
+            }
 
             /*
 	    deq_qdepth.write(0, standard_metadata.deq_qdepth);

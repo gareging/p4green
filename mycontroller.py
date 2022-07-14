@@ -232,7 +232,7 @@ def main(p4info_file_path, bmv2_file_path):
         aggreg_switch_end_id = aggreg_switch_start_id + AGGREG_SWITCHES - 1
         core_switch_id = HOST_SWITCHES + AGGREG_SWITCHES
 
-
+        # vip: 10.0.1.5, 11.0.1.5, etc
         for i in range(0, aggreg_switch_start_id):
             modifyRegister(switches[i], 'vip_ip', 0, 167772160 + 256*(i+1)+5)
 
@@ -250,8 +250,15 @@ def main(p4info_file_path, bmv2_file_path):
         counter_previous = [(0, 0) for i in range(len(switches))]
         ecmp_mode = [0 for i in range(len(switches))]
         ecmp_width = [AGGREG_SWITCHES for i in range(len(switches))]
+        from datetime import datetime
+        timestamp = int(datetime.now().timestamp())
         for i in range(len(switches)):
-            modifyRegister(switches[i], 'ecmp_width', 0, 2)
+            modifyRegister(switches[i], 'ecmp_width', 0, 1)
+            #modifyRegister(switches[i], 'epoch_start', 0, timestamp)
+            modifyRegister(switches[i], 'epoch_length', 0, 1000000)
+            modifyRegister(switches[i], 'packet_threshold1', 0, 0)
+            modifyRegister(switches[i], 'packet_threshold2', 0, 10)
+            modifyRegister(switches[i], 'packet_threshold3', 0, 100)
             modifyRegister(switches[i], 'max_load', 0, 3)
 
 
@@ -259,6 +266,7 @@ def main(p4info_file_path, bmv2_file_path):
              print('-----------------------------------')
              #ecmpModeControlCLI(switches)
              sleep(2)
+             '''
              for i in range(len(switches)):
                  counter_values = getCounterValues(p4info_helper, switches[i], "MyIngress.my_pkt_counts", 0)
                  new_data = (counter_values[0]-counter_previous[i][0], counter_values[1]-counter_previous[i][1])
@@ -287,7 +295,7 @@ def main(p4info_file_path, bmv2_file_path):
                               print(f'Changing ECMP width to 3 at switch{i+1}')
                               modifyRegister(switches[i], 'ecmp_width', 0, 3)
                               ecmp_width[i]=3
-
+             '''
 #            print('\n----- Reading tunnel counters -----')
              #printCounter(p4info_helper, switches[0], "MyIngress.my_pkt_counts", 0)
 #            printCounter(p4info_helper, s2, "MyIngress.egressTunnelCounter", 100)
