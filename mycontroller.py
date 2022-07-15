@@ -256,10 +256,10 @@ def main(p4info_file_path, bmv2_file_path):
             modifyRegister(switches[i], 'ecmp_width', 0, 1)
             #modifyRegister(switches[i], 'epoch_start', 0, timestamp)
             modifyRegister(switches[i], 'epoch_length', 0, 1000000)
-            modifyRegister(switches[i], 'packet_threshold1', 0, 0)
-            modifyRegister(switches[i], 'packet_threshold2', 0, 10)
-            modifyRegister(switches[i], 'packet_threshold3', 0, 100)
-            modifyRegister(switches[i], 'max_load', 0, 3)
+            modifyRegister(switches[i], 'packet_size_threshold1', 0, 0)
+            modifyRegister(switches[i], 'packet_size_threshold2', 0, 1000)
+            modifyRegister(switches[i], 'packet_size_threshold3', 0, 10000)
+            modifyRegister(switches[i], 'max_load', 0, 1)
 
 
         while True:
