@@ -243,11 +243,7 @@ def main(p4info_file_path, bmv2_file_path):
         # change core switch type
         modifyRegister(switches[core_switch_id], 'switch_type', 0, CORE_SWITCH_TYPE)
 
-        # Turn on ecmp mode at core and access switches
-        modifyRegister(switches[core_switch_id], 'ecmp_mode', 0, 1)
-
-        for i in range(0, aggreg_switch_start_id):
-            modifyRegister(switches[i], 'ecmp_mode', 0, 1)
+        # Turn on ecmp mode at core
 
         # Print the tunnel counters every 2 seconds
         counter_previous = [(0, 0) for i in range(len(switches))]
