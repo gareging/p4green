@@ -1,4 +1,4 @@
-usudo chmod +rwx new_grandlog.txt 
+sudo chmod +rwx new_grandlog.txt 
 sudo chmod 777 new_grandlog.txt 
 cat new_grandlog.txt | sed 's/[\x01-\x1F\x7F]//g' > grandlog.txt
 sed -i '/Device/d' ./grandlog.txt
@@ -7,4 +7,4 @@ sed -i '/Max/d' ./grandlog.txt
 sed -i '/Min/d' ./grandlog.txt
 sed -i '/Avg/d' ./grandlog.txt 
 sed -i '/Incoming/d' ./grandlog.txt 
-awk '{print $2}' grandlog.txt | paste - - - > grandlog_filtered.txt
+awk '{print ($2+$4)}' grandlog.txt | paste - - - - | awk '{print NR " " $s}' > grandlog_filtered.txt

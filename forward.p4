@@ -403,13 +403,11 @@ control MyIngress(inout headers hdr,
     counter(1, CounterType.packets) my_pkt_counts;
     register<bit<48>>(1) epoch_start;
     register<bit<48>>(1) epoch_length;
-    register<bit<32>>(1) packet_threshold1;
-    register<bit<32>>(1) packet_threshold2;
-    register<bit<32>>(1) packet_threshold3;
+    
     register<bit<32>>(1) packet_size_threshold1;
     register<bit<32>>(1) packet_size_threshold2;
     register<bit<32>>(1) packet_size_threshold3;
-    register<bit<32>>(1) packet_counter;
+    
     register<bit<32>>(1) packet_size_counter;
     register<bit<32>>(1) vip_ip;
     register<bit<48>>(1) timestamp_log;
@@ -518,7 +516,6 @@ control MyIngress(inout headers hdr,
 	    bit<32> packet_th1;
 	    bit<32> packet_th2;
 	    bit<32> packet_th3;
-	    bit<32> packet_cn;
 	    bit<32> packet_sz_cn;
 
 	    bit<48> timestamp = standard_metadata.ingress_global_timestamp;
@@ -529,8 +526,6 @@ control MyIngress(inout headers hdr,
 	    packet_size_threshold1.read(packet_th1, 0);
 	    packet_size_threshold2.read(packet_th2, 0);
 	    packet_size_threshold3.read(packet_th3, 0);
-	    packet_counter.read(packet_cn, 0);
-	    packet_counter.write(0, packet_cn+1);
             packet_size_counter.read(packet_sz_cn, 0);
 	    packet_size_counter.write(0, packet_sz_cn + standard_metadata.packet_length);
 	    
@@ -550,7 +545,6 @@ control MyIngress(inout headers hdr,
 		    //aggreg_num = 1;
 		}
 		epoch_start.write(0, timestamp);
-		packet_counter.write(0, 0);
 		packet_size_counter.write(0, 0);
             }
 
