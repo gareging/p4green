@@ -18,7 +18,7 @@ set xrange [0:24]
 plot 'log2.txt' every 10 using ($1/20+2.4):($5/555) with linespoints pi 5 ps 2 title "Total"\
 ,'log2.txt' every 10 using ($1/20+2.4):($2/555) with linespoints pi 5 pt 2  ps 2 title "Aggregation Switch 1"\
 ,'log2.txt' every 10 using ($1/20+2.4):($3/555) with linespoints pi 5 pt 65 ps 2 title "Aggregation Switch 2"\
-,'log2.txt' every 10 using ($1/20+2.4):($4/555) with linespoints pi 5 pt 65 ps 2 title "Aggregation Switch 3"
+,'log2.txt' every 10 using ($1/20+2.4):($4/555) with linespoints pi 5 pt 4 ps 2 title "Aggregation Switch 3"
 #,'4.69.184.193_FIFA_0.txt' every 1000 using ($1/10000):4 with linespoints title "Normal"  
 set terminal postscript enhanced color eps 17 font 'Helvetica' lw 5
 set out 'Traffic.eps'

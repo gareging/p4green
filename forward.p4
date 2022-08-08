@@ -412,6 +412,7 @@ control MyIngress(inout headers hdr,
     register<bit<32>>(1) vip_ip;
     register<bit<48>>(1) timestamp_log;
 
+    register<bit<1>>(1) rr; // round robbin
     // Incremental checksum fix adapted from the pseudocode at https://p4.org/p4-spec/docs/PSA-v1.1.0.html#appendix-internetchecksum-implementation
     action ones_complement_sum(in bit<16> x, in bit<16> y, out bit<16> sum) {
 	bit<17> ret = (bit<17>) x + (bit<17>) y;
@@ -599,16 +600,25 @@ control MyIngress(inout headers hdr,
 			    // new connection
 			    bit<8> load1;
 			    bit<8> load2;
+			    bit<1> rr_val;
 			    load_counter.read(load1, 0);
 			    load_counter.read(load2, 1);
 			    bit<8> max_load_value;
 			    max_load.read(max_load_value, 0);
 
-			    if (load1 < max_load_value || load1 <= load2){
+			    if (load1 != 0 && load1 >= load2){
 				meta.host_id = 1;
+				// not needed, only after ack: load_counter.write(0, load1-1);
+			    }
+			    else if (load2 != 0) {
+				meta.host_id = 2;
+				//load_counter.write(0, load2-1);
+				if (load2 == 0) { load_counter.write(0, 1); load_counter.write(1, 1); }
 			    }
 			    else{
-				meta.host_id = 2;
+                                rr.read(rr_val, 0);
+				meta.host_id = (bit<4>)rr_val + 1;
+				rr.write(0, ~rr_val);
 			    }
 			}
 			bit<16> sum = 0;
@@ -632,15 +642,15 @@ control MyIngress(inout headers hdr,
 			hdr.tcp.checksum = ~sum;
 			
 			bit<8> current;
-			if (hdr.tcp.rst == 1 || hdr.tcp.fin == 1){
-				// reset: decrease the counter load
+			/*if (hdr.tcp.rst == 1 || hdr.tcp.fin == 1){
+				// reset: increase the counter load
 				 load_counter.read(current, (bit<32>)standard_metadata.ingress_port-1);
-                                 load_counter.write((bit<32>)standard_metadata.ingress_port-1, current-1);
+                                 load_counter.write((bit<32>)standard_metadata.ingress_port-1, current+1);
 			}
 			else if (hdr.tcp.syn == 1 && hdr.tcp.ack == 1){
                             load_counter.read(current, (bit<32>)standard_metadata.ingress_port-1);
-			    load_counter.write((bit<32>)standard_metadata.ingress_port-1, current+1);
-			}
+			    load_counter.write((bit<32>)standard_metadata.ingress_port-1, current-1);
+			}*/
 		    }
 		}
 		
@@ -652,6 +662,10 @@ control MyIngress(inout headers hdr,
 	//standard_metadata.egress_spec = meta.egress_candidate;
     }
 }
+
+
+
+
 
 /*************************************************************************
 ****************  E G R E S S   P R O C E S S I N G   *******************

@@ -47,3 +47,11 @@ sleep 10
 ./send.py 10.0.${1}.0
 sleep 10
 echo 'DONE'
+
+while true
+do
+   ./send.py 10.0.${1}.0
+   echo 'Press [CTRL+C] to stop'
+   sleep 3
+done
+

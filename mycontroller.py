@@ -262,7 +262,9 @@ def main(p4info_file_path, bmv2_file_path):
             modifyRegister(switches[i], 'packet_size_threshold1', 0, 0)
             modifyRegister(switches[i], 'packet_size_threshold2', 0, 10000)
             modifyRegister(switches[i], 'packet_size_threshold3', 0, 40000)
-            modifyRegister(switches[i], 'max_load', 0, 0)
+            modifyRegister(switches[i], 'max_load', 0, -20)
+            modifyRegister(switches[i], 'load_counter', 0, 0)
+            modifyRegister(switches[i], 'load_counter', 1, 0)
 
 
         while True:
