@@ -1,4 +1,5 @@
 #!/usr/local/bin/gnuplot -persist
+set size 3,1
 set lmargin 12
 set bmargin 4
 set ylabel 'Load' font 'Helvetica, 34' offset -1.5

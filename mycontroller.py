@@ -40,6 +40,14 @@ def modifyRegister(sw, register_name, index, value):
     runtime_api = RuntimeAPI('SimplePre', standard_client, mc_client)
     runtime_api.do_register_write(f'{register_name} {index} {value}')
 
+def readRegister(sw, register_name, index):
+    sw_port_shift = int(sw.name[1:])
+    standard_client, mc_client = utils.thrift_connect('localhost', 9089+sw_port_shift, RuntimeAPI.get_thrift_services(1))
+    load_json_config(standard_client, None)
+    runtime_api = RuntimeAPI('SimplePre', standard_client, mc_client)
+    return runtime_api.do_register_read(f'{register_name} {index}')
+
+
 def addMulticastingGroup(p4_info_helper, switches, links):
     for sw in switches[:4]:
         replicas = []
@@ -270,9 +278,22 @@ def main(p4info_file_path, bmv2_file_path):
         while True:
              print('-----------------------------------')
              #ecmpModeControlCLI(switches)
-             sleep(2)
-             '''
-             for i in range(len(switches)):
+             for i in range(0, aggreg_switch_start_id):
+                 load1 = int(readRegister(switches[i], 'load_counter', 0))
+                 load2 = int(readRegister(switches[i], 'load_counter', 1))
+                 total = load1+load2
+                 print(f'load at switch {i+1}:', load1, load2)
+                 if total == 0:
+                    continue
+                 alloc1 = load1*100//total
+                 for j in range(alloc1):
+                    modifyRegister(switches[i], 'hash_table', j, 1)
+
+                 for j in range(alloc1, 100):
+                    modifyRegister(switches[i], 'hash_table', j, 2)
+
+             sleep(1)
+             ''' for i in range(len(switches)):
                  counter_values = getCounterValues(p4info_helper, switches[i], "MyIngress.my_pkt_counts", 0)
                  new_data = (counter_values[0]-counter_previous[i][0], counter_values[1]-counter_previous[i][1])
                  print(f'New packets for s{i+1}: {new_data[0]} Bytes: {new_data[1]} ECMP width: {ecmp_width[i]} ecmp mode: {ecmp_mode[i]}')

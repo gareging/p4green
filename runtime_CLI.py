@@ -2113,12 +2113,10 @@ class RuntimeAPI(cmd.Cmd):
             except:
                 raise UIn_Error("Bad format for index")
             value = self.client.bm_register_read(0, register.name, index)
-            print("{}[{}]=".format(register_name, index), value)
+            return value
+            #print("{}[{}]=".format(register_name, index), value)
         else:
-            sys.stderr.write("register index omitted, reading entire array\n")
-            entries = self.client.bm_register_read_all(0, register.name)
-            print("{}=".format(register_name), ", ".join(
-                [str(e) for e in entries]))
+            raise UIn_Error("Bad format for index")
 
     def complete_register_read(self, text, line, start_index, end_index):
         return self._complete_registers(text)
