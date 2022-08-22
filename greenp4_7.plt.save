@@ -28,3 +28,4 @@ plot 'log7.txt' every 1 using ($1/13):($2/1000) with linespoints pi 5 pt 6  ps 2
 set terminal postscript enhanced color eps 17 font 'Helvetica' lw 5
 set out 'LoadBalancing_new4.eps'
 rep
+

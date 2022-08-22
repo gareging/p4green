@@ -285,19 +285,20 @@ def main(p4info_file_path, bmv2_file_path):
                  print(f'load at switch {i+1}:', load1, load2)
                  if total == 0:
                     continue
-                 '''
-                 alloc1 = load1*100//total
-                 for j in range(alloc1):
-                    modifyRegister(switches[i], 'hash_table', j, 1)
+                 '''smooth'''
+                 #alloc1 = load1*100//total
+                 #for j in range(alloc1):
+                 #   modifyRegister(switches[i], 'hash_table', j, 1)
 
-                 for j in range(alloc1, 100):
-                    modifyRegister(switches[i], 'hash_table', j, 2)
-                 '''
+                 #for j in range(alloc1, 100):
+                 #   modifyRegister(switches[i], 'hash_table', j, 2)
+
+                 '''not smooth - all traffic goes to max(simulation)'''
                  host_id = 1 if load1>=load2 else 2
-                 for j in range(0, 100):
-                    modifyRegister(switches[i], 'hash_table', j, host_id)
+                 for j in range(alloc1, 100):
+ 
 
-             #sleep(1)
+             sleep(1)
              ''' for i in range(len(switches)):
                  counter_values = getCounterValues(p4info_helper, switches[i], "MyIngress.my_pkt_counts", 0)
                  new_data = (counter_values[0]-counter_previous[i][0], counter_values[1]-counter_previous[i][1])

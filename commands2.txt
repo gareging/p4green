@@ -7,4 +7,4 @@ sed -i '/Max/d' ./grandlog.txt
 sed -i '/Min/d' ./grandlog.txt
 sed -i '/Avg/d' ./grandlog.txt 
 sed -i '/Incoming/d' ./grandlog.txt 
-awk '{print ($2+$4)}' grandlog.txt | paste - - - - - - - - | awk '{print NR " " $s}' > green_filtered.txt
+awk '{print ($2+$4)}' grandlog.txt | paste - - - - | awk '{print NR " " $s}' > green_filtered.txt
