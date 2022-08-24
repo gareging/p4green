@@ -22,5 +22,5 @@ plot 'log.txt' every 1 using ($1/20):5 with linespoints pi 8000 ps 1.5 title "To
 ,'log.txt' every 1 using ($1/20):4 with linespoints pt 65 pi 8000 ps 1.5 title "Switch 3"
 #,'4.69.184.193_FIFA_0.txt' every 1000 using ($1/10000):4 with linespoints title "Normal"  
 set terminal postscript enhanced color eps 17 font 'Helvetica' lw 5
-set out 'Traffic.eps'
+set out 'Traffic0.eps'
 rep

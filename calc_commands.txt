@@ -1,0 +1,3 @@
+cat log8_3.txt | awk '$1 >= 65 && $1 <=169'
+cat log8_3.txt | awk '$1 >= 65 && $1 <=169' | awk '{sum += $1}'
+cat log8_3.txt | awk '$1 >= 175 && $1 <=286' | awk '{sum += $1}'

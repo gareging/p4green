@@ -1,0 +1,330 @@
+pkg_info {
+  arch: "v1model"
+}
+tables {
+  preamble {
+    id: 37375156
+    name: "MyIngress.ipv4_lpm"
+    alias: "ipv4_lpm"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.dstAddr"
+    bitwidth: 32
+    match_type: LPM
+  }
+  action_refs {
+    id: 28792405
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 47113019
+    name: "MyIngress.hosts"
+    alias: "hosts"
+  }
+  match_fields {
+    id: 1
+    name: "meta.host_id"
+    bitwidth: 4
+    match_type: EXACT
+  }
+  action_refs {
+    id: 28926969
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+actions {
+  preamble {
+    id: 21257015
+    name: "NoAction"
+    alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
+  }
+}
+actions {
+  preamble {
+    id: 22404629
+    name: "MyIngress.subtract"
+    alias: "subtract"
+  }
+}
+actions {
+  preamble {
+    id: 17454804
+    name: "MyIngress.subtract32"
+    alias: "subtract32"
+  }
+}
+actions {
+  preamble {
+    id: 32046131
+    name: "MyIngress.add32"
+    alias: "add32"
+  }
+}
+actions {
+  preamble {
+    id: 28926969
+    name: "MyIngress.send_to_host"
+    alias: "send_to_host"
+  }
+  params {
+    id: 1
+    name: "dstAddr"
+    bitwidth: 48
+  }
+  params {
+    id: 2
+    name: "port"
+    bitwidth: 9
+  }
+  params {
+    id: 3
+    name: "dstIPAddr"
+    bitwidth: 32
+  }
+}
+actions {
+  preamble {
+    id: 22060107
+    name: "MyIngress.send_back"
+    alias: "send_back"
+  }
+}
+actions {
+  preamble {
+    id: 28792405
+    name: "MyIngress.ipv4_forward"
+    alias: "ipv4_forward"
+  }
+  params {
+    id: 1
+    name: "dstAddr"
+    bitwidth: 48
+  }
+  params {
+    id: 2
+    name: "port"
+    bitwidth: 9
+  }
+}
+registers {
+  preamble {
+    id: 372958318
+    name: "MyIngress.load_counter"
+    alias: "load_counter"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 8
+      }
+    }
+  }
+  size: 2
+}
+registers {
+  preamble {
+    id: 374863487
+    name: "MyIngress.switch_type"
+    alias: "switch_type"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 2
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 381330489
+    name: "MyIngress.ecmp_mode"
+    alias: "ecmp_mode"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 1
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 384866903
+    name: "MyIngress.ecmp_width"
+    alias: "ecmp_width"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 384493156
+    name: "MyIngress.epoch_start"
+    alias: "epoch_start"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 48
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 371522625
+    name: "MyIngress.epoch_length"
+    alias: "epoch_length"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 48
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 372703079
+    name: "MyIngress.packet_size_threshold1"
+    alias: "packet_size_threshold1"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 382435985
+    name: "MyIngress.packet_size_threshold2"
+    alias: "packet_size_threshold2"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 376494557
+    name: "MyIngress.packet_size_threshold3"
+    alias: "packet_size_threshold3"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 379660006
+    name: "MyIngress.packet_size_counter"
+    alias: "packet_size_counter"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 378340476
+    name: "MyIngress.vip_ip"
+    alias: "vip_ip"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 32
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 372281263
+    name: "MyIngress.timestamp_log"
+    alias: "timestamp_log"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 48
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 380561391
+    name: "MyIngress.rr"
+    alias: "rr"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 1
+      }
+    }
+  }
+  size: 1
+}
+registers {
+  preamble {
+    id: 373110020
+    name: "MyIngress.hash_table"
+    alias: "hash_table"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 4
+      }
+    }
+  }
+  size: 100
+}
+type_info {
+}
