@@ -16,6 +16,12 @@ const bit<8> TYPE_GREEN_INFO = 0x8F;
 #define CORE_SWITCH 2
 #define AGGREG_NUM 3
 #define HOST_NUM 2
+#define ARP 0
+#define AGGREGATION_IN 1
+#define SERVER_IN 2
+#define SERVER_OUT 3
+#define INFO_PACKET 4
+
 
 typedef bit<9>  egressSpec_t;
 typedef bit<48> macAddr_t;
@@ -73,6 +79,9 @@ header tcp_t {
     bit<16> urgentPtr;
 }
 
+/*TCP timestamp implementation sources:
+https://github.com/cheetahlib/cheetah-p4
+https://github.com/jafingerhut/p4-guide/blob/master/tcp-options-parser/tcp-options-parser.p4 */
 header Tcp_option_end_h {
     bit<8> kind;
 }
@@ -102,12 +111,6 @@ header Tcp_option_timestamp_h {
     bit<8>         length;
     bit<32> tsval;
     bit<32> tsecr;
-    /*
-    bit<16>        tsval_msb;
-    bit<16>        tsval_lsb;
-    bit<16>        tsecr_msb;
-    bit<16>        tsecr_lsb;
-    */
 }
 
 //Versions without the kind for hop by hop
@@ -123,10 +126,6 @@ header Tcp_option_timestamp_e {
     bit<8>         length;
     bit<32> tsval;
     bit<32> tsecr;
-    //bit<16>        tsval_msb;
-    //bit<16>        tsval_lsb;
-    //bit<16>        tsecr_msb;
-    //bit<16>        tsecr_lsb;
 }
 
 header_union Tcp_option_h {
@@ -158,9 +157,6 @@ struct Tcp_option_sack_top
 }
 
 struct metadata {
-    /* empty */
-    bit<9> egress_candidate;
-    bit<9> ecmp_candidate;
     bit<4> host_id;
 }
 
@@ -186,6 +182,9 @@ struct headers {
 *********************** P A R S E R  ***********************************
 *************************************************************************/
 
+/*TCP timestamp implementation sources:                                         
+https://github.com/cheetahlib/cheetah-p4                                        
+https://github.com/jafingerhut/p4-guide/blob/master/tcp-options-parser/tcp-options-parser.p4 */
 
 parser Tcp_option_parser(packet_in b,
                          in bit<4> tcp_hdr_data_offset,
@@ -195,25 +194,18 @@ parser Tcp_option_parser(packet_in b,
     bit<7> tcp_hdr_bytes_left;
     
     state start {
-        // RFC 793 - the Data Offset field is the length of the TCP
-        // header in units of 32-bit words.  It must be at least 5 for
-        // the minimum length TCP header, and since it is 4 bits in
-        // size, can be at most 15, for a maximum TCP header length of
-        // 15*4 = 60 bytes.
         verify(tcp_hdr_data_offset >= 5, error.TcpDataOffsetTooSmall);
         tcp_hdr_bytes_left = 4 * (bit<7>) (tcp_hdr_data_offset - 5);
-        // always true here: 0 <= tcp_hdr_bytes_left <= 40
         transition next_option;
     }
     state next_option {
         transition select(tcp_hdr_bytes_left) {
-            0 : accept;  // no TCP header bytes left
+            0 : accept;
             default : next_option_part2;
         }
     }
     
     state next_option_part2 {
-        // precondition: tcp_hdr_bytes_left >= 1
         transition select(b.lookahead<bit<8>>()) {
             0: parse_tcp_option_end;
             1: parse_tcp_option_nop;
@@ -233,21 +225,10 @@ parser Tcp_option_parser(packet_in b,
     
     state parse_tcp_option_end {
         b.extract(vec.next.end);
-        // TBD: This code is an example demonstrating why it would be
-        // useful to have sizeof(vec.next.end) instead of having to
-        // put in a hard-coded length for each TCP option.
         tcp_hdr_bytes_left = tcp_hdr_bytes_left - 1;
         transition consume_remaining_tcp_hdr_and_accept;
     }
     state consume_remaining_tcp_hdr_and_accept {
-        // A more picky sub-parser implementation would verify that
-        // all of the remaining bytes are 0, as specified in RFC 793,
-        // setting an error and rejecting if not.  This one skips past
-        // the rest of the TCP header without checking this.
-
-        // tcp_hdr_bytes_left might be as large as 40, so multiplying
-        // it by 8 it may be up to 320, which requires 9 bits to avoid
-        // losing any information.
         b.extract(padding, (bit<32>) (8 * (bit<9>) tcp_hdr_bytes_left));
         transition accept;
     }
@@ -270,10 +251,6 @@ parser Tcp_option_parser(packet_in b,
     }
     state parse_tcp_option_sack {
         bit<8> n_sack_bytes = b.lookahead<Tcp_option_sack_top>().length;
-        // I do not have global knowledge of all TCP SACK
-        // implementations, but from reading the RFC, it appears that
-        // the only SACK option lengths that are legal are 2+8*n for
-        // n=1, 2, 3, or 4, so set an error if anything else is seen.
         verify(n_sack_bytes == 10 || n_sack_bytes == 18 ||
                n_sack_bytes == 26 || n_sack_bytes == 34,
                error.TcpBadSackOptionLength);
@@ -305,6 +282,7 @@ parser MyParser(packet_in packet,
 
     state parse_arp {
 	packet.extract(hdr.arp);
+	transition accept;
     }
 
     state parse_ipv4 {
@@ -315,13 +293,16 @@ parser MyParser(packet_in packet,
 	}
     }
 
+/*TCP timestamp implementation sources:                                         
+https://github.com/cheetahlib/cheetah-p4                                        
+https://github.com/jafingerhut/p4-guide/blob/master/tcp-options-parser/tcp-opti\
+ons-parser.p4 */
+
     state parse_tcp {
         packet.extract(hdr.tcp);
-        //Tcp_option_parser.apply(packet, hdr.tcp.dataOffset,
-        //                        hdr.tcp_options_vec, hdr.tcp_options_padding);
         packet.extract(hdr.nop1);
         transition select(hdr.nop1.kind){
-		1: parse_nop;
+	    1: parse_nop;
             2: parse_ss;
             4: parse_sack;
             8: parse_ts;
@@ -334,9 +315,9 @@ parser MyParser(packet_in packet,
          transition select(hdr.nop2.kind){
             1: parse_nop2;
             8: parse_ts;
-		default: accept;
 	}
     }
+
     state parse_nop2 {
         packet.extract(hdr.nop3);
          transition select(hdr.nop3.kind){
@@ -356,7 +337,6 @@ parser MyParser(packet_in packet,
     }
 
     state parse_sack {
-        //Finish parsing sack
         packet.extract(hdr.sackw);
         packet.extract(hdr.sack, (bit<32>)hdr.sackw.length - 2);
         packet.extract(hdr.nop4);
@@ -366,8 +346,9 @@ parser MyParser(packet_in packet,
 	}
     }
 
+    
+
     state parse_ts {
-        //Finish parsing ts
         packet.extract(hdr.timestamp);
         transition accept;
     }
@@ -390,28 +371,31 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
-
-
-    register<bit<8>>(2) load_counter;
-
-    register<bit<2>>(1) switch_type;
+    // enables P4Green
     register<bit<1>>(1) ecmp_mode;
 
-    register<bit<32>>(1) ecmp_width;
-
+    register<bit<32>>(1) aggr_switches;
     register<bit<48>>(1) epoch_start;
+    register<bit<32>>(1) traffic;    
+
+    register<bit<2>>(1) switch_type;
     register<bit<48>>(1) epoch_length;
-    
+
     register<bit<32>>(1) packet_size_threshold1;
     register<bit<32>>(1) packet_size_threshold2;
     register<bit<32>>(1) packet_size_threshold3;
-    
-    register<bit<32>>(1) packet_size_counter;
-    register<bit<32>>(1) vip_ip;
-    register<bit<48>>(1) timestamp_log;
 
-    register<bit<1>>(1) rr; // round robbin
-    register<bit<4>>(100) hash_table;
+    register<bit<8>>(HOST_NUM) servers_data;
+    register<bit<32>>(1) virtual_ip_address;
+
+
+    register<bit<1>>(1) rr; // round robbin helper register
+    register<bit<1>>(5) packet_type;
+
+    
+    /*TCP timestamp implementation sources:                                         
+    https://github.com/cheetahlib/cheetah-p4                                        
+    https://github.com/jafingerhut/p4-guide/blob/master/tcp-options-parser/tcp-options-parser.p4 */
     // Incremental checksum fix adapted from the pseudocode at https://p4.org/p4-spec/docs/PSA-v1.1.0.html#appendix-internetchecksum-implementation
     action ones_complement_sum(in bit<16> x, in bit<16> y, out bit<16> sum) {
 	bit<17> ret = (bit<17>) x + (bit<17>) y;
@@ -452,26 +436,100 @@ control MyIngress(inout headers hdr,
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 10;
 	hdr.ipv4.dstAddr = dstIPAddr;
-	//hdr.timestamp.tsval = 0;
     }
 
     action send_back(){
 	hdr.arp.opcode = 2;
 	hdr.arp.srcProtoAddr = hdr.arp.dstProtoAddr;
 	standard_metadata.egress_spec = standard_metadata.ingress_port;
-	//meta.egress_candidate = standard_metadata.ingress_port;
     }
-/*
-    action broadcast(){
-       standard_metadata.mcast_grp = 1;
-    }
-*/
+
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
+
+     action calc(in bit<32> packet_sz_cn, in bit<32> packet_th1, in bit<32> packet_th2, in bit<32> packet_th3, out bit<32> aggr_num){
+	if (packet_sz_cn > packet_th3){
+	    aggr_num = 3;
+	}
+	else if (packet_sz_cn > packet_th2){
+	    aggr_num = 2;
+	}
+	else{
+	    aggr_num = 1;
+	}
+    }
+
+
+    action run_ECMP(in bit<2> type, in bit<32> aggreg_switches){
+	bit<16> base;
+	if (type == ACCESS_SWITCH){
+	    base = (bit<16>)(HOST_NUM+1);
+	}
+	else if (type == CORE_SWITCH){
+	    base = (bit<16>)1;
+	}
+	hash(standard_metadata.egress_spec, HashAlgorithm.crc16, base,
+	    { hdr.ipv4.srcAddr,
+		hdr.ipv4.dstAddr,
+		hdr.ipv4.protocol
+	    }, aggreg_switches);	
+    }
+
+    action encode(in bit<32> server_id){
+	bit<16> sum = 0;
+	subtract(sum, hdr.tcp.checksum);
+        subtract32(sum, hdr.ipv4.srcAddr);
+	subtract32(sum, hdr.timestamp.tsval);
+	bit<32> vip;
+	virtual_ip_address.read(vip, 0);
+	hdr.ipv4.srcAddr = vip;
+	hdr.timestamp.tsval = (bit<32>)(hdr.timestamp.tsval & 4294967280) + server_id;
+        add32(sum, hdr.ipv4.srcAddr);
+	add32(sum, hdr.timestamp.tsval);
+	hdr.tcp.checksum = ~sum;
+    }
+
+    action decode(){
+	meta.host_id = (bit<4>)((bit<32>)hdr.timestamp.tsecr & (bit<32>)15);
+    }
+
+    action standard_round_robin(){
+	bit<1> rr_val;
+	rr.read(rr_val, 0);
+	meta.host_id = (bit<4>)rr_val + 1;
+	rr.write(0, ~rr_val);
+    }
+    
+    action P4_round_robin(inout bit<8> data1, inout bit<8> data2){
+	bit<1> rr_val;
+	rr.read(rr_val, 0);
+	if (rr_val == 0){
+	    if (data1 != 0){
+		meta.host_id = 1;
+		data1 = data1-1;
+	    }
+	    else{
+		meta.host_id = 2;
+		data2 = data2-1;
+	    }
+	}
+	else{
+	    if (data2 != 0){
+		meta.host_id = 2;
+		data2 = data2-1;
+	    }
+	    else{
+		meta.host_id = 1;
+		data1 = data1-1;
+	    }
+	}
+	rr.write(0, ~rr_val);
+    }
+
 
     table ipv4_lpm {
         key = {
@@ -484,7 +542,7 @@ control MyIngress(inout headers hdr,
         size = 1024;
     }
 
-    table hosts {
+    table host_info {
         key = {
             meta.host_id: exact;
         }
@@ -496,20 +554,68 @@ control MyIngress(inout headers hdr,
     }
 
     apply {
+	bit<2> type;
+	bit<1> ecmp_md;
+	switch_type.read(type, 0);
+	ecmp_mode.read(ecmp_md, 0);
+	packet_type.write(ARP, 0);
+	packet_type.write(INFO_PACKET, 0);
+	packet_type.write(AGGREGATION_IN, 0);
+	packet_type.write(SERVER_IN, 0);
+	packet_type.write(SERVER_OUT, 0);
+	/*Packet classification*/
 	if (hdr.arp.isValid()){
+	    packet_type.write(ARP, 1);
+	}
+	else if (hdr.ipv4.isValid() && hdr.ipv4.protocol == TYPE_GREEN_INFO
+            && standard_metadata.ingress_port <= HOST_NUM && type == ACCESS_SWITCH){
+	    packet_type.write(INFO_PACKET, 1);
+	}
+	else if(ecmp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == AGGREG_NUM+1){
+	    packet_type.write(AGGREGATION_IN, 1);
+	}
+	else{
+            ipv4_lpm.apply();
+	    bit<32> vip;
+            virtual_ip_address.read(vip, 0);
+            if (ecmp_md == 1 && type == ACCESS_SWITCH && hdr.ipv4.dstAddr != vip) {
+		packet_type.write(SERVER_OUT, 1);
+		if (standard_metadata.egress_spec > HOST_NUM){
+		    packet_type.write(AGGREGATION_IN, 1);
+		}
+	    }
+	    else if(ecmp_md == 1 && type == ACCESS_SWITCH && hdr.ipv4.dstAddr==vip){
+		packet_type.write(SERVER_IN, 1);
+	    }
+	}
+	/*Packet classification end*/
+	
+	bit<1> info_packet;
+	bit<1> aggregation_in_packet;
+	bit<1> server_in_packet;
+	bit<1> server_out_packet;
+	bit<1> arp_packet;
+	
+	packet_type.read(info_packet, INFO_PACKET);
+	packet_type.read(aggregation_in_packet, AGGREGATION_IN);
+	packet_type.read(server_in_packet, SERVER_IN);
+	packet_type.read(server_out_packet, SERVER_OUT);
+	packet_type.read(arp_packet, ARP);
+	
+
+	if (arp_packet == 1){
 	     send_back();	
 	}
-	else if (hdr.ipv4.isValid() && hdr.ipv4.protocol == TYPE_GREEN_INFO){
+	else if (info_packet == 1){
+	    // Workload Control: parsing the info packet (Server_in Case 1)
               bit<8> prev_value;
 	      bit<8> value;
 	      bit<32> index;
               index = (bit<32>)standard_metadata.ingress_port - (bit<32>)1;
 	      value = (bit<8>)((bit<32>)hdr.ipv4.dstAddr & (bit<32>)255);
-	      load_counter.write(index, value);
+	      servers_data.write(index, value);
 	}
-        else if (hdr.ipv4.isValid()) {
-	    bit<2> type;
-            bit<1> ecmp_md;
+	else if(aggregation_in_packet == 1){
 	    bit<32> aggreg_num;
 	    bit<48> epoch_st;
 	    bit<48> epoch_ln;
@@ -519,164 +625,65 @@ control MyIngress(inout headers hdr,
 	    bit<32> packet_sz_cn;
 
 	    bit<48> timestamp = standard_metadata.ingress_global_timestamp;
-            timestamp_log.write(0, timestamp);
-	    
+
 	    epoch_start.read(epoch_st, 0);
 	    epoch_length.read(epoch_ln, 0);
 	    packet_size_threshold1.read(packet_th1, 0);
 	    packet_size_threshold2.read(packet_th2, 0);
 	    packet_size_threshold3.read(packet_th3, 0);
-            packet_size_counter.read(packet_sz_cn, 0);
-	    packet_size_counter.write(0, packet_sz_cn + standard_metadata.packet_length);
-	    
-	    aggreg_num = 1;
-	    
-	    if (timestamp > epoch_st + epoch_ln){
-                if (packet_sz_cn > packet_th3){
-                    ecmp_width.write(0, 3);
-		    //aggreg_num = 3;
-		}
-		else if (packet_sz_cn > packet_th2){
-		    ecmp_width.write(0, 2);
-		    //aggreg_num = 2;
-		}
-		else{
-                    ecmp_width.write(0, 1);		    
-		    //aggreg_num = 1;
-		}
+            traffic.read(packet_sz_cn, 0);
+	
+	    if (timestamp >= epoch_st + epoch_ln){
+		bit<32> aggr_num;
+		calc(packet_sz_cn, packet_th1, packet_th2, packet_th3, aggr_num);
+		aggr_switches.write(0, aggr_num);
 		epoch_start.write(0, timestamp);
-		packet_size_counter.write(0, 0);
+		packet_sz_cn = 0;
             }
 
-            /*
-	    deq_qdepth.write(0, standard_metadata.deq_qdepth);
-	    enq_qdepth.write(0, standard_metadata.enq_qdepth);
-	    */
-            switch_type.read(type, 0);
-	    ecmp_mode.read(ecmp_md, 0);
-	    ecmp_width.read(aggreg_num, 0);
+	    //increment the traffic counter
+	    traffic.write(0, packet_sz_cn + standard_metadata.packet_length);
 	    
+	    ecmp_mode.read(ecmp_md, 0);
+	    aggr_switches.read(aggreg_num, 0);
+	    
+	    run_ECMP(type, aggreg_num);
 
-	    if (ecmp_md == 1 && type == CORE_SWITCH && standard_metadata.ingress_port == AGGREG_NUM+1) {
-		    hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)1,
-			{ hdr.ipv4.srcAddr,
-			  hdr.ipv4.dstAddr,
-			  hdr.ipv4.protocol
-			}, aggreg_num);
+	    if (server_out_packet == 1 && hdr.tcp.isValid()){
+		bit<32> server_id = (bit<32>)standard_metadata.ingress_port;
+		encode(server_id);
 	    }
-	    else{
-		ipv4_lpm.apply();
-
-		if (ecmp_md == 1 && type == ACCESS_SWITCH) {
-		    if (standard_metadata.egress_spec > HOST_NUM) {
-			// outgoing packet: ecmp on
-			hash(standard_metadata.egress_spec, HashAlgorithm.crc16, (bit<16>)(HOST_NUM+1),
-			    { hdr.ipv4.srcAddr,
-				hdr.ipv4.dstAddr,
-				hdr.ipv4.protocol
-			    }, aggreg_num);
-		    }
+	}		
+	else if(server_in_packet == 1){
+	    if(hdr.tcp.syn == 0 && hdr.timestamp.isValid()){
+		// existing connection
+		decode();
 	    }
-
-	   if (type == ACCESS_SWITCH && hdr.tcp.isValid()){
-	       bit<32> vip;
-	       vip_ip.read(vip, 0);
-	       if(hdr.ipv4.dstAddr==vip){
-	          if(hdr.tcp.syn == 0 && hdr.timestamp.isValid()){
-			    //existing incoming connection
-			    meta.host_id = (bit<4>)((bit<32>)hdr.timestamp.tsecr & (bit<32>)15);
-			    //meta.host_id = (bit<4>)hdr.timestamp.tsecr;
-		            //if (hdr.tcp.rst == 1){
-				// reset: decrease the counter load
-				 //bit<8> current;
-				 //load_counter.read(current, (bit<32>)standard_metadata.egress_spec-1);
-                                 //load_counter.write((bit<32>)standard_metadata.egress_spec-1, current-1);
-			    //}
-			    bit<16> sum = 0;
-			}
-		 else if (hdr.tcp.syn == 1){
-			    // new connection
-			    bit<8> load1;
-			    bit<8> load2;
-			    bit<1> rr_val;
-			    load_counter.read(load1, 0);
-			    load_counter.read(load2, 1);
-			    
-/*			    if (load1 != 0 && load1 >= load2){
-				meta.host_id = 1;
-				// not needed, only after ack: load_counter.write(0, load1-1);
-			    }
-			    else if (load2 != 0) {
-				meta.host_id = 2;
-				//load_counter.write(0, load2-1);
-				if (load2 == 0) { load_counter.write(0, 1); load_counter.write(1, 1); }
-			    }*/
-			    if (load1 != 0 || load2 != 0){//if there is green energy: modified round robbin
-                                rr.read(rr_val, 0);
-				if (rr_val == 0){
-				    if (load1 != 0){
-					meta.host_id = 1;
-					load_counter.write(0, load1-1);
-				    }
-				    else{
-					meta.host_id = 2;
-					load_counter.write(1, load2-1);
-				    }
-				}
-				else{
-				    if (load2 != 0){
-					meta.host_id = 2;
-					load_counter.write(1, load2-1);
-				    }
-				    else{
-					meta.host_id = 1;
-					load_counter.write(0, load1-1);
-				    }
-				}
-				rr.write(0, ~rr_val);
-			    }
-			    else{//round robbin if not green energy at all
-                                rr.read(rr_val, 0);
-				meta.host_id = (bit<4>)rr_val + 1;
-				rr.write(0, ~rr_val);
-			    }
-			}
-			bit<16> sum = 0;
-			subtract(sum, hdr.tcp.checksum);
-                        subtract32(sum, hdr.ipv4.dstAddr);			    
-			hosts.apply();
-			add32(sum, hdr.ipv4.dstAddr);
-			hdr.tcp.checksum = ~sum;    
-		}
-	        else if (standard_metadata.ingress_port <= HOST_NUM && hdr.tcp.isValid()){
-			// outgoing packet from server to client
-			bit<16> sum = 0;
-			subtract(sum, hdr.tcp.checksum);
-                        subtract32(sum, hdr.ipv4.srcAddr);
-		        subtract32(sum, hdr.timestamp.tsval);
-			hdr.ipv4.srcAddr = vip;
-			hdr.timestamp.tsval = (bit<32>)(hdr.timestamp.tsval & 4294967280) + (bit<32>)standard_metadata.ingress_port;
-			//hdr.timestamp.tsval = (bit<32>)standard_metadata.ingress_port;
-                        add32(sum, hdr.ipv4.srcAddr);
-			add32(sum, hdr.timestamp.tsval);
-			hdr.tcp.checksum = ~sum;
-			
-			bit<8> current;
-			/*if (hdr.tcp.rst == 1 || hdr.tcp.fin == 1){
-				// reset: increase the counter load
-				 load_counter.read(current, (bit<32>)standard_metadata.ingress_port-1);
-                                 load_counter.write((bit<32>)standard_metadata.ingress_port-1, current+1);
-			}
-			else if (hdr.tcp.syn == 1 && hdr.tcp.ack == 1){
-                            load_counter.read(current, (bit<32>)standard_metadata.ingress_port-1);
-			    load_counter.write((bit<32>)standard_metadata.ingress_port-1, current-1);
-			}*/
-		    }
-		}
+	    else if (hdr.tcp.syn == 1){
+		// new connection (for 2 hosts)
+		bit<8> data1;
+		bit<8> data2;
+		bit<1> rr_val;
+		servers_data.read(data1, 0);
+		servers_data.read(data2, 1);
 		
+		if (data1 != 0 || data2 != 0){//if there is green energy: P4Green round robbin
+		    P4_round_robin(data1, data2);
+		    servers_data.write(0, data1);
+		    servers_data.write(1, data2);
+		}
+		else{//round robbin if no green energy available at all
+		    standard_round_robin();
+		}
 	    }
-        }
-	//standard_metadata.egress_spec = meta.egress_candidate;
+		
+	    bit<16> sum = 0;
+	    subtract(sum, hdr.tcp.checksum);
+            subtract32(sum, hdr.ipv4.dstAddr);
+	    host_info.apply();
+	    add32(sum, hdr.ipv4.dstAddr);
+	    hdr.tcp.checksum = ~sum;    
+	}
     }
 }
 

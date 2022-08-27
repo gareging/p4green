@@ -73,7 +73,7 @@ def writeForwardingRule(p4info_helper, sw, ip_address, mask, mac_address, port):
 
 def writeSendToHostRule(p4info_helper, sw, host_id, mac_address, port, ip_address):
     table_entry = p4info_helper.buildTableEntry(
-        table_name="MyIngress.hosts",
+        table_name="MyIngress.host_info",
         match_fields={
             "meta.host_id": host_id
         },
@@ -242,7 +242,7 @@ def main(p4info_file_path, bmv2_file_path):
 
         # vip: 10.0.1.5, 11.0.1.5, etc
         for i in range(0, aggreg_switch_start_id):
-            modifyRegister(switches[i], 'vip_ip', 0, 167772160 + 256*(i+1)+5)
+            modifyRegister(switches[i], 'virtual_ip_address', 0, 167772160 + 256*(i+1)+5)
 
         for i in range(aggreg_switch_start_id, aggreg_switch_end_id+1):
             # Change switch type to aggr for 4,5,6
@@ -264,74 +264,11 @@ def main(p4info_file_path, bmv2_file_path):
         from datetime import datetime
         timestamp = int(datetime.now().timestamp())
         for i in range(len(switches)):
-            modifyRegister(switches[i], 'ecmp_width', 0, 1)
-            #modifyRegister(switches[i], 'epoch_start', 0, timestamp)
             modifyRegister(switches[i], 'epoch_length', 0, 1000000)
             modifyRegister(switches[i], 'packet_size_threshold1', 0, 0)
             modifyRegister(switches[i], 'packet_size_threshold2', 0, 10000)
             modifyRegister(switches[i], 'packet_size_threshold3', 0, 40000)
-            modifyRegister(switches[i], 'max_load', 0, -20)
-            modifyRegister(switches[i], 'load_counter', 0, 0)
-            modifyRegister(switches[i], 'load_counter', 1, 0)
 
-
-        while True:
-             print('-----------------------------------')
-             #ecmpModeControlCLI(switches)
-             for i in range(0, aggreg_switch_start_id):
-                 load1 = int(readRegister(switches[i], 'load_counter', 0))
-                 load2 = int(readRegister(switches[i], 'load_counter', 1))
-                 total = load1+load2
-                 print(f'load at switch {i+1}:', load1, load2)
-                 if total == 0:
-                    continue
-                 '''
-                 alloc1 = load1*100//total
-                 for j in range(alloc1):
-                    modifyRegister(switches[i], 'hash_table', j, 1)
-
-                 for j in range(alloc1, 100):
-                    modifyRegister(switches[i], 'hash_table', j, 2)
-                 '''
-                 host_id = 1 if load1>=load2 else 2
-                 for j in range(0, 100):
-                    modifyRegister(switches[i], 'hash_table', j, host_id)
-
-             #sleep(1)
-             ''' for i in range(len(switches)):
-                 counter_values = getCounterValues(p4info_helper, switches[i], "MyIngress.my_pkt_counts", 0)
-                 new_data = (counter_values[0]-counter_previous[i][0], counter_values[1]-counter_previous[i][1])
-                 print(f'New packets for s{i+1}: {new_data[0]} Bytes: {new_data[1]} ECMP width: {ecmp_width[i]} ecmp mode: {ecmp_mode[i]}')
-                 counter_previous[i] = counter_values
-                 if i < HOST_SWITCHES or i >= HOST_SWITCHES + AGGREG_SWITCHES:
-                     if new_data[1] < 500 and ecmp_mode[i] == 1:
-                          print(f'Turning off ECMP mode at switch{i+1}')
-                          modifyRegister(switches[i], 'ecmp_mode', 0, 0)
-                          ecmp_mode[i]=0
-                     elif new_data[1] >= 500 and new_data[1] < 1000:
-                          if ecmp_mode[i] == 0:
-                              print(f'Turning on ECMP mode at switch{i+1}')
-                              modifyRegister(switches[i], 'ecmp_mode', 0, 1)
-                              ecmp_mode[i]=1
-                          if ecmp_width[i] != 2:
-                              print(f'Changing ECMP width to 2 at switch{i+1}')
-                              modifyRegister(switches[i], 'ecmp_width', 0, 2)
-                              ecmp_width[i]=2
-                     elif new_data[1] >= 1000:
-                          if ecmp_mode[i] == 0:
-                              print(f'Turning on ECMP mode at switch{i+1}')
-                              modifyRegister(switches[i], 'ecmp_mode', 0, 1)
-                              ecmp_mode[i]=1
-                          if ecmp_width[i] != 3:
-                              print(f'Changing ECMP width to 3 at switch{i+1}')
-                              modifyRegister(switches[i], 'ecmp_width', 0, 3)
-                              ecmp_width[i]=3
-             '''
-#            print('\n----- Reading tunnel counters -----')
-             #printCounter(p4info_helper, switches[0], "MyIngress.my_pkt_counts", 0)
-#            printCounter(p4info_helper, s2, "MyIngress.egressTunnelCounter", 100)
-#            printCounter(p4info_helper, s2, "MyIngress.ingressTunnelCounter", 200)
-#            printCounter(p4info_helper, s1, "MyIngress.egressTunnelCounter", 200)
 
     except KeyboardInterrupt:
         print(" Shutting down.")

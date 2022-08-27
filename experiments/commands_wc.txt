@@ -1,0 +1,11 @@
+sudo chmod +rwx workload_control_log.txt 
+sudo chmod 777 workload_control_log.txt
+echo 'OPEN NANO AND CONVERT TO DOS' 
+cat workload_control_log.txt | sed 's/[\x01-\x1F\x7F]//g' > temp.txt
+sed -i '/Device/d' ./temp.txt
+sed -i '/Ttl/d' ./temp.txt
+sed -i '/Max/d' ./temp.txt
+sed -i '/Min/d' ./temp.txt
+sed -i '/Avg/d' ./temp.txt 
+sed -i '/Incoming/d' ./temp.txt 
+awk '{print ($2+$4)}' temp.txt | paste - - | awk '{print NR " " $s}' > workload_control_log_filtered.txt
