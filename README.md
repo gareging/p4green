@@ -1,5 +1,3 @@
-# Implementing a Control Plane using P4Runtime
-
 ## Introduction
 
 This code generates a data center topology with a core switch, three aggregation switches, 4 access switches and 9 hosts. 
