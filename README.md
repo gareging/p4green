@@ -7,3 +7,5 @@ RuntimeAPI calculates shortest paths to each host for each switch and initialize
 The P4 program includes an "arp_fool"-type action that returns a fake MAC address per each arp reply.
 
 Switches work as routers - they have the routing tables set up, and their routing tables have the MAC addresses of the destination hosts.
+
+To repeat the experiment, clone into the tutorials/exercises/ directory of P4 tutorial virtual machine (https://github.com/p4lang/tutorials).
